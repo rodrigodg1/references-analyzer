@@ -1,0 +1,19 @@
+
+services:
+  biblio-analyzer:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - SECRET_KEY=your-secret-key-here
+    restart: unless-stopped
+    networks:
+      - biblio-network
+
+networks:
+  biblio-network:
+    driver: bridge
