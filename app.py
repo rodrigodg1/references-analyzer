@@ -71,6 +71,38 @@ class BibliometricAnalyzer:
 
         self.citation_locations = citation_locations
         return citations
+    
+    
+
+    
+        
+    def get_citation_years(self):
+        """Analyze the distribution of citations by year."""
+        year_distribution = Counter()
+        for entry in self.entries:
+            if 'year' in entry:
+                try:
+                    year = int(entry['year'])
+                    year_distribution[year] += 1
+                except (ValueError, TypeError):
+                    continue
+        return dict(sorted(year_distribution.items()))
+    
+    
+    def get_citation_distribution(self):  # Changed from get_citation_years for clarity
+        """Analyze the distribution of citations by year."""
+        year_distribution = Counter()
+        for entry in self.entries:
+            if 'year' in entry:
+                try:
+                    year = int(entry['year'])
+                    year_distribution[year] += 1
+                except (ValueError, TypeError):
+                    continue
+        return dict(sorted(year_distribution.items()))
+    
+
+    
 
     def validate_citations(self):
         """Validate citations between BibTeX and LaTeX files."""
@@ -80,17 +112,27 @@ class BibliometricAnalyzer:
         bib_keys = {entry['ID'] for entry in self.entries}
         tex_citations = set(self.citations.keys())
 
-        return {
-            'missing_citations': {
-                cite: self.citation_locations[cite] 
-                for cite in tex_citations - bib_keys
-            },
-            'unused_citations': list(bib_keys - tex_citations),
-            'valid_citations': len(tex_citations & bib_keys),
-            'total_citations': len(tex_citations),
-            'total_references': len(bib_keys)
+        # Calculate citation metrics
+        missing = tex_citations - bib_keys
+        unused = bib_keys - tex_citations
+        valid = tex_citations & bib_keys
+
+        # Get citation locations for missing references
+        missing_with_locations = {
+            cite: self.citation_locations[cite] 
+            for cite in missing
         }
 
+        return {
+            'missing_citations': missing_with_locations,
+            'unused_citations': list(unused),
+            'valid_citations': len(valid),
+            'total_citations': len(tex_citations),
+            'total_references': len(bib_keys),
+            'citation_completeness': round(len(valid) / len(tex_citations) * 100, 2) if tex_citations else 0,
+            'reference_usage': round(len(valid) / len(bib_keys) * 100, 2) if bib_keys else 0
+        }
+        
     def get_venue_statistics(self):
         """Analyze publication venues."""
         venues = []
@@ -211,7 +253,8 @@ def analyze():
             'venues': analyzer.get_venue_statistics(),
             'author_stats': analyzer.get_author_statistics()[0],
             'page_stats': analyzer.get_page_statistics(),
-            'citation_stats': analyzer.validate_citations()
+            'citation_stats': analyzer.validate_citations(),
+            'year_distribution': analyzer.get_citation_distribution()  # Updated method name
         }
         
         return render_template('results.html', results=results)
