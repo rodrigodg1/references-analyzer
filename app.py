@@ -10,6 +10,7 @@ from datetime import datetime
 import io
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from statistics import mean, median, stdev  # Import statistics here
 
 # Application Configuration
 app = Flask(__name__)
@@ -71,68 +72,26 @@ class BibliometricAnalyzer:
 
         self.citation_locations = citation_locations
         return citations
-    
-    
-
-    
-        
-    def get_citation_years(self):
-        """Analyze the distribution of citations by year."""
-        year_distribution = Counter()
-        for entry in self.entries:
-            if 'year' in entry:
-                try:
-                    year = int(entry['year'])
-                    year_distribution[year] += 1
-                except (ValueError, TypeError):
-                    continue
-        return dict(sorted(year_distribution.items()))
-    
-    
-    def get_citation_distribution(self):  # Changed from get_citation_years for clarity
-        """Analyze the distribution of citations by year."""
-        year_distribution = Counter()
-        for entry in self.entries:
-            if 'year' in entry:
-                try:
-                    year = int(entry['year'])
-                    year_distribution[year] += 1
-                except (ValueError, TypeError):
-                    continue
-        return dict(sorted(year_distribution.items()))
-    
-
-    
 
     def validate_citations(self):
         """Validate citations between BibTeX and LaTeX files."""
         if not self.citations:
             return None
-            
+
         bib_keys = {entry['ID'] for entry in self.entries}
         tex_citations = set(self.citations.keys())
 
-        # Calculate citation metrics
-        missing = tex_citations - bib_keys
-        unused = bib_keys - tex_citations
-        valid = tex_citations & bib_keys
-
-        # Get citation locations for missing references
-        missing_with_locations = {
-            cite: self.citation_locations[cite] 
-            for cite in missing
-        }
-
         return {
-            'missing_citations': missing_with_locations,
-            'unused_citations': list(unused),
-            'valid_citations': len(valid),
+            'missing_citations': {
+                cite: self.citation_locations[cite]
+                for cite in tex_citations - bib_keys
+            },
+            'unused_citations': list(bib_keys - tex_citations),
+            'valid_citations': len(tex_citations & bib_keys),
             'total_citations': len(tex_citations),
-            'total_references': len(bib_keys),
-            'citation_completeness': round(len(valid) / len(tex_citations) * 100, 2) if tex_citations else 0,
-            'reference_usage': round(len(valid) / len(bib_keys) * 100, 2) if bib_keys else 0
+            'total_references': len(bib_keys)
         }
-        
+
     def get_venue_statistics(self):
         """Analyze publication venues."""
         venues = []
@@ -176,7 +135,6 @@ class BibliometricAnalyzer:
                     continue
 
         if page_counts:
-            from statistics import mean, median, stdev
             return {
                 'mean_pages': round(mean(page_counts), 2),
                 'median_pages': median(page_counts),
@@ -202,6 +160,154 @@ class BibliometricAnalyzer:
             'avg_authors_per_paper': round(len(authors) / len(self.entries), 2)
         }
 
+    def get_yearly_publication_stats(self):
+        """Get yearly publication statistics."""
+        yearly_counts = Counter()
+        for entry in self.entries:
+            if 'year' in entry:
+                year = int(entry['year'])
+                yearly_counts[year] += 1
+        return dict(sorted(yearly_counts.items())) # Sort by year
+
+    def get_keyword_statistics(self):
+        """Analyze keyword statistics."""
+        keywords = []
+        for entry in self.entries:
+            if 'keywords' in entry:
+                keywords.extend([kw.strip() for kw in entry['keywords'].replace(';', ',').split(',')]) # Split by comma and semicolon
+            elif 'keyword' in entry: # Some bib files use 'keyword' instead of 'keywords'
+                keywords.extend([kw.strip() for kw in entry['keyword'].replace(';', ',').split(',')])
+        return Counter(keywords)
+
+    def get_yearly_venue_stats(self):
+        """Analyze venue distribution over years."""
+        yearly_venue_counts = defaultdict(Counter)
+        for entry in self.entries:
+            if 'year' in entry:
+                year = int(entry['year'])
+                venue = None
+                if 'journal' in entry:
+                    venue = entry['journal']
+                elif 'booktitle' in entry:
+                    venue = entry['booktitle']
+                if venue:
+                    yearly_venue_counts[year][venue] += 1
+        return {year: dict(venue_counter) for year, venue_counter in sorted(yearly_venue_counts.items())} # Sort by year
+
+    def get_page_stats_by_type(self):
+        """Get page statistics per publication type."""
+        page_stats_by_type = defaultdict(list)
+        for entry in self.entries:
+            entry_type = entry['ENTRYTYPE']
+            if 'pages' in entry:
+                try:
+                    pages = entry['pages'].split('--')
+                    if len(pages) == 2:
+                        count = int(pages[1]) - int(pages[0]) + 1
+                        page_stats_by_type[entry_type].append(count)
+                except (ValueError, IndexError):
+                    continue
+
+        results = {}
+        for entry_type, page_counts in page_stats_by_type.items():
+            if page_counts:
+                results[entry_type] = {
+                    'mean_pages': round(mean(page_counts), 2),
+                    'median_pages': median(page_counts),
+                    'std_pages': round(stdev(page_counts), 2) if len(page_counts) > 1 else 0,
+                    'min_pages': min(page_counts),
+                    'max_pages': max(page_counts)
+                }
+        return results
+
+    def get_yearly_publication_chart_data(self):
+        """Prepare data for yearly publication chart."""
+        yearly_stats = self.get_yearly_publication_stats()
+        years = list(yearly_stats.keys())
+        counts = list(yearly_stats.values())
+        return {
+            'labels': years,
+            'datasets': [{
+                'label': 'Publications per Year',
+                'data': counts,
+                'backgroundColor': 'rgba(54, 162, 235, 0.7)',
+                'borderColor': 'rgba(54, 162, 235, 1)',
+                'borderWidth': 1
+            }]
+        }
+
+    def get_entry_type_chart_data(self):
+        """Prepare data for entry type chart."""
+        entry_types = self.get_entry_types()
+        labels = list(entry_types.keys())
+        counts = list(entry_types.values())
+        background_colors = [
+            'rgba(255, 99, 132, 0.7)', 'rgba(255, 159, 64, 0.7)', 'rgba(255, 205, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)', 'rgba(54, 162, 235, 0.7)', 'rgba(153, 102, 255, 0.7)',
+            'rgba(201, 203, 207, 0.7)'
+        ] # More colors if needed
+        border_colors = [color.replace('0.7', '1') for color in background_colors]
+
+        return {
+            'labels': labels,
+            'datasets': [{
+                'label': 'Publication Types',
+                'data': counts,
+                'backgroundColor': background_colors[:len(labels)], # Use only needed colors
+                'borderColor': border_colors[:len(labels)],
+                'borderWidth': 1
+            }]
+        }
+
+    def get_top_venues_chart_data(self, top_n=10):
+        """Prepare data for top venues chart."""
+        top_venues = self.get_venue_statistics().most_common(top_n)
+        venues = [venue for venue, count in top_venues]
+        counts = [count for venue, count in top_venues]
+        return {
+            'labels': venues,
+            'datasets': [{
+                'label': 'Publications',
+                'data': counts,
+                'backgroundColor': 'rgba(255, 205, 86, 0.7)',
+                'borderColor': 'rgba(255, 205, 86, 1)',
+                'borderWidth': 1
+            }]
+        }
+
+    def get_top_authors_chart_data(self, top_n=10):
+        """Prepare data for top authors chart."""
+        top_authors = self.get_author_statistics()[0].most_common(top_n)
+        authors = [author for author, count in top_authors]
+        counts = [count for author, count in top_authors]
+        return {
+            'labels': authors,
+            'datasets': [{
+                'label': 'Publications',
+                'data': counts,
+                'backgroundColor': 'rgba(75, 192, 192, 0.7)',
+                'borderColor': 'rgba(75, 192, 192, 1)',
+                'borderWidth': 1
+            }]
+        }
+
+    def get_keyword_chart_data(self, top_n=15):
+        """Prepare data for keyword chart."""
+        top_keywords = self.get_keyword_statistics().most_common(top_n)
+        keywords = [keyword for keyword, count in top_keywords]
+        counts = [count for keyword, count in top_keywords]
+        return {
+            'labels': keywords,
+            'datasets': [{
+                'label': 'Keyword Frequency',
+                'data': counts,
+                'backgroundColor': 'rgba(153, 102, 255, 0.7)',
+                'borderColor': 'rgba(153, 102, 255, 1)',
+                'borderWidth': 1
+            }]
+        }
+
+
 @app.errorhandler(413)
 def request_entity_too_large(error):
     """Handle file size exceeded error."""
@@ -219,7 +325,7 @@ def analyze():
     # Validate bib file
     if 'bib_file' not in request.files:
         return 'No BibTeX file uploaded', 400
-    
+
     bib_file = request.files['bib_file']
     if bib_file.filename == '':
         return 'No BibTeX file selected', 400
@@ -238,7 +344,7 @@ def analyze():
         tex_file = request.files['tex_file']
         if not allowed_file(tex_file.filename):
             return 'Invalid file type for LaTeX file', 400
-        
+
         try:
             tex_content = tex_file.read().decode('utf-8')
         except UnicodeDecodeError:
@@ -246,7 +352,7 @@ def analyze():
 
     try:
         analyzer = BibliometricAnalyzer(bib_content, tex_content)
-        
+
         results = {
             'basic_stats': analyzer.get_basic_stats(),
             'entry_types': analyzer.get_entry_types(),
@@ -254,11 +360,21 @@ def analyze():
             'author_stats': analyzer.get_author_statistics()[0],
             'page_stats': analyzer.get_page_statistics(),
             'citation_stats': analyzer.validate_citations(),
-            'year_distribution': analyzer.get_citation_distribution()  # Updated method name
+            'yearly_stats': analyzer.get_yearly_publication_stats(),
+            'keyword_stats': analyzer.get_keyword_statistics(),
+            'yearly_venue_stats': analyzer.get_yearly_venue_stats(),
+            'page_stats_by_type': analyzer.get_page_stats_by_type(),
+
+            # Chart data:
+            'yearly_publication_chart': analyzer.get_yearly_publication_chart_data(),
+            'entry_type_chart': analyzer.get_entry_type_chart_data(),
+            'top_venues_chart': analyzer.get_top_venues_chart_data(),
+            'top_authors_chart': analyzer.get_top_authors_chart_data(),
+            'keyword_chart': analyzer.get_keyword_chart_data()
         }
-        
+
         return render_template('results.html', results=results)
-    
+
     except Exception as e:
         app.logger.error(f"Analysis error: {str(e)}")
         return f'Error analyzing files: {str(e)}', 500

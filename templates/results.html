@@ -1,4 +1,5 @@
 <!-- templates/results.html -->
+<!-- templates/results.html -->
 {% extends "base.html" %}
 
 {% block content %}
@@ -34,8 +35,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Citation Key
-                            </th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Citation Key</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Line</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Context</th>
                         </tr>
@@ -64,8 +64,7 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Citation Key
-                            </th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Citation Key</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -81,70 +80,6 @@
         {% endif %}
     </div>
     {% endif %}
-
-
-
-<!-- Citation Year Distribution -->
-<div class="bg-white shadow rounded-lg p-6">
-    <h2 class="text-2xl font-bold mb-4">Citation Distribution by Year</h2>
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Year</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Citations</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Distribution</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for year, count in results.year_distribution|dictsort(by='value', reverse=true) %}
-                <tr>
-                    <td class="px-4 py-2">{{ year }}</td>
-                    <td class="px-4 py-2">{{ count }}</td>
-                    <td class="px-4 py-2">
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            {% set percentage = (count / results.basic_stats.total_entries * 100)|round|int %}
-                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ percentage }}%"></div>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-    
-    <!-- Year Distribution Statistics -->
-    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="border rounded-lg p-4">
-            <h3 class="text-sm font-medium text-gray-500">Year Distribution</h3>
-            <ul class="mt-1 text-lg space-y-2">
-                {% for year, count in results.year_distribution|dictsort(by='value', reverse=true) %}
-                    <li>{{ year }}: {{ count }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="border rounded-lg p-4">
-            <h3 class="text-sm font-medium text-gray-500">Time Span</h3>
-            {% set years = results.year_distribution.keys()|list %}
-            <p class="mt-1 text-xl font-semibold">{{ years[0] }} - {{ years[-1] }}</p>
-        </div>
-        <div class="border rounded-lg p-4">
-            <h3 class="text-sm font-medium text-gray-500">Average Citations per Year</h3>
-            <p class="mt-1 text-xl font-semibold">
-                {{ (results.basic_stats.total_entries / results.year_distribution|length)|round(1) }}
-            </p>
-        </div>
-    </div>
-
-
-
-
-
-
-
-
-
 
 
     <!-- Basic Statistics -->
@@ -183,6 +118,12 @@
         </div>
     </div>
 
+    <!-- Publication Types Chart -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Publication Types Chart</h2>
+        <canvas id="entryTypeChart"></canvas>
+    </div>
+
     <!-- Top Venues -->
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-2xl font-bold mb-4">Top Publication Venues</h2>
@@ -204,6 +145,12 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <!-- Top Venues Chart -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Top Publication Venues Chart</h2>
+        <canvas id="topVenuesChart"></canvas>
     </div>
 
     <!-- Author Statistics -->
@@ -229,6 +176,11 @@
         </div>
     </div>
 
+    <!-- Author Statistics Chart -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Most Prolific Authors Chart</h2>
+        <canvas id="topAuthorsChart"></canvas>
+    </div>
 
 
     <!-- Page Statistics -->
@@ -262,29 +214,201 @@
     </div>
     {% endif %}
 
+    <!-- Yearly Publication Statistics -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Yearly Publication Statistics</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Year</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Publications</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for year, count in results.yearly_stats.items() %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ year }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Yearly Publication Statistics Chart -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Yearly Publication Statistics Chart</h2>
+        <canvas id="yearlyPublicationChart"></canvas>
+    </div>
+
+    <!-- Keyword Statistics -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Keyword Statistics</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Keyword</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Frequency</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for keyword, count in results.keyword_stats.most_common(15) %}
+                    <tr>
+                        <td class="px-6 py-4">{{ keyword }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Keyword Statistics Chart -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Keyword Statistics Chart</h2>
+        <canvas id="keywordChart"></canvas>
+    </div>
+
+    <!-- Yearly Venue Distribution -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Yearly Venue Distribution</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Year</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Venue</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Publications</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for year, venue_counts in results.yearly_venue_stats.items() %}
+                        {% for venue, count in venue_counts.items() %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ year }}</td>
+                            <td class="px-6 py-4">{{ venue }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ count }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    <!-- Page Statistics by Entry Type -->
+    {% if results.page_stats_by_type %}
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Page Statistics by Publication Type</h2>
+        {% for entry_type, stats in results.page_stats_by_type.items() %}
+        <div class="mb-4">
+            <h3 class="text-xl font-semibold mb-2">{{ entry_type|title }}</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-gray-500">Mean Pages</h4>
+                    <p class="mt-1 text-base font-semibold">{{ stats.mean_pages }}</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-gray-500">Median Pages</h4>
+                    <p class="mt-1 text-base font-semibold">{{ stats.median_pages }}</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-gray-500">Std Dev</h4>
+                    <p class="mt-1 text-base font-semibold">{{ stats.std_pages }}</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-gray-500">Min Pages</h4>
+                    <p class="mt-1 text-base font-semibold">{{ stats.min_pages }}</p>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-gray-500">Max Pages</h4>
+                    <p class="mt-1 text-base font-semibold">{{ stats.max_pages }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
 
     <!-- Return Button -->
     <div class="mt-6 flex justify-center">
         <a href="{{ url_for('index') }}"
-            class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+           class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
             Analyze Another File
         </a>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Yearly Publication Chart
+        const yearlyPubCtx = document.getElementById('yearlyPublicationChart').getContext('2d');
+        new Chart(yearlyPubCtx, {
+            type: 'bar', // Or 'line'
+            data: {{ results.yearly_publication_chart|safe }},
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Entry Type Chart
+        const entryTypeCtx = document.getElementById('entryTypeChart').getContext('2d');
+        new Chart(entryTypeCtx, {
+            type: 'pie',
+            data: {{ results.entry_type_chart|safe }},
+        });
+
+        // Top Venues Chart
+        const topVenuesCtx = document.getElementById('topVenuesChart').getContext('2d');
+        new Chart(topVenuesCtx, {
+            type: 'bar',
+            data: {{ results.top_venues_chart|safe }},
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Top Authors Chart
+        const topAuthorsCtx = document.getElementById('topAuthorsChart').getContext('2d');
+        new Chart(topAuthorsCtx, {
+            type: 'bar',
+            data: {{ results.top_authors_chart|safe }},
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Keyword Chart
+        const keywordCtx = document.getElementById('keywordChart').getContext('2d');
+        new Chart(keywordCtx, {
+            type: 'bar',
+            data: {{ results.keyword_chart|safe }},
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+            },
+        });
+    });
+</script>
+
 {% endblock %}
