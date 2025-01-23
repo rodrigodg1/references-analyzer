@@ -81,10 +81,146 @@
     </div>
     {% endif %}
 
+    <!-- Label Reference Analysis - Checklist Style -->
+    {% if results.label_reference_stats %}
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-4">Label Reference Analysis</h2>
+        <i>verify if it was properly referenced in the text</i>
+        <!-- Figure Analysis Checklist -->
+        {% if results.label_reference_stats.figure %}
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold mb-3">Figure Reference Checklist
+            <br>
+            <i class="block text-gray-500 text-sm mb-2">Total Figures Defined: {{ results.label_reference_stats.figure.total_defined }}, Referenced: {{ results.label_reference_stats.figure.total_referenced }}</i>
+            </h3>
+
+            <ul class="space-y-2">
+                {% for label_status in results.label_reference_stats.figure.detailed_label_status %}
+                <li class="flex items-center justify-between">
+                    <span class="font-medium">{{ label_status.label }}</span>
+                    {% if label_status.referenced %}
+                    <span class="text-green-600" title="Referenced">✅</span>  <!-- Checkmark -->
+                    {% else %}
+                    <span class="text-red-600" title="Not Referenced">❌</span>   <!-- Ballot X -->
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% if results.label_reference_stats.figure.missing_references %}
+            <div class="mt-4">
+                <p class="text-sm text-gray-500">
+                    <span class="text-red-600">❌</span> = Not referenced. Review figures marked with ❌.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Table Analysis Checklist -->
+        {% if results.label_reference_stats.table %}
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold mb-3">Table Reference Checklist
+             <br>
+             <i class="block text-gray-500 text-sm mb-2">Total Tables Defined: {{ results.label_reference_stats.table.total_defined }}, Referenced: {{ results.label_reference_stats.table.total_referenced }}</i>
+             </h3>
+
+            <ul class="space-y-2">
+                {% for label_status in results.label_reference_stats.table.detailed_label_status %}
+                <li class="flex items-center justify-between">
+                    <span class="font-medium">{{ label_status.label }}</span>
+                    {% if label_status.referenced %}
+                        <span class="text-green" title="Referenced">✅</span>  <!-- Checkmark -->
+                    {% else %}
+                        <span class="text-red" title="Not Referenced">❌</span>   <!-- Ballot X -->
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% if results.label_reference_stats.table.missing_references %}
+            <div class="mt-4">
+                <p class="text-sm text-gray-500">
+                    <span class="text-red-600">❌</span> = Not referenced. Review tables marked with ❌.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Algorithm Analysis Checklist -->
+        {% if results.label_reference_stats.algorithm %}
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold mb-3">Algorithm Reference Checklist
+             <br>
+             <i class="block text-gray-500 text-sm mb-2">Total Algorithms Defined: {{ results.label_reference_stats.algorithm.total_defined }}, Referenced: {{ results.label_reference_stats.algorithm.total_referenced }}</i>
+             </h3>
+
+            <ul class="space-y-2">
+                {% for label_status in results.label_reference_stats.algorithm.detailed_label_status %}
+                <li class="flex items-center justify-between">
+                    <span class="font-medium">{{ label_status.label }}</span>
+                    {% if label_status.referenced %}
+                    <span class="text-green-600" title="Referenced">✅</span>  <!-- Checkmark -->
+                    {% else %}
+                    <span class="text-red-600" title="Not Referenced">❌</span>   <!-- Ballot X -->
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+             {% if results.label_reference_stats.algorithm.missing_references %}
+            <div class="mt-4">
+                <p class="text-sm text-gray-500">
+                    <span class="text-red-600">❌</span> = Not referenced. Review algorithms marked with ❌.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Equation Analysis Checklist -->
+        {% if results.label_reference_stats.equation %}
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold mb-3">Equation Reference Checklist
+             <br>
+             <i class="block text-gray-500 text-sm mb-2">Total Equations Defined: {{ results.label_reference_stats.equation.total_defined }}, Referenced: {{ results.label_reference_stats.equation.total_referenced }}</i>
+             </h3>
+
+            <ul class="space-y-2">
+                {% for label_status in results.label_reference_stats.equation.detailed_label_status %}
+                <li class="flex items-center justify-between">
+                    <span class="font-medium">{{ label_status.label }}</span>
+                    {% if label_status.referenced %}
+                    <span class="text-green-600" title="Referenced">✅</span>  <!-- Checkmark -->
+                    {% else %}
+                    <span class="text-red-600" title="Not Referenced">❌</span>   <!-- Ballot X -->
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+             {% if results.label_reference_stats.equation.missing_references %}
+            <div class="mt-4">
+                <p class="text-sm text-gray-500">
+                    <span class="text-red-600">❌</span> = Not referenced. Review equations marked with ❌.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+    {% endif %}
+
+
+
+
+
+
+
+
 
     <!-- Basic Statistics -->
     <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-2xl font-bold mb-4">Basic Statistics</h2>
+        <h2 class="text-2xl font-bold mb-4">Basic BibTex Statistics</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for key, value in results.basic_stats.items() %}
             <div class="border rounded-lg p-4">
@@ -118,11 +254,12 @@
         </div>
     </div>
 
-    <!-- Publication Types Chart -->
+    <!-- Publication Types Chart
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-2xl font-bold mb-4">Publication Types Chart</h2>
         <canvas id="entryTypeChart"></canvas>
     </div>
+    -->
 
     <!-- Top Venues -->
     <div class="bg-white shadow rounded-lg p-6">

@@ -43,6 +43,7 @@ class BibliometricAnalyzer:
         self.entries = self.bib_database.entries
         self.tex_content = tex_content
         self.citations = self._extract_citations() if tex_content else None
+        self.label_reference_stats = self._analyze_labels_and_references() if tex_content else None # Analyze labels and references
 
     def _extract_citations(self):
         """Extract citations from LaTeX content."""
@@ -72,6 +73,46 @@ class BibliometricAnalyzer:
 
         self.citation_locations = citation_locations
         return citations
+
+    def _analyze_labels_and_references(self):
+        """Analyze labels and references for figures, tables, algorithms, and equations and return detailed status."""
+        element_types = {
+            'figure': {'label_pattern': r'\\label{fig:(.*?)}', 'ref_pattern': r'\\ref{fig:(.*?)}'},
+            'table': {'label_pattern': r'\\label{tab:(.*?)}', 'ref_pattern': r'\\ref{tab:(.*?)}'},
+            'algorithm': {'label_pattern': r'\\label{alg:(.*?)}', 'ref_pattern': r'\\ref{alg:(.*?)}'},
+            'equation': {'label_pattern': r'\\label{eq:(.*?)}', 'ref_pattern': r'\\ref{eq:(.*?)}'}
+        }
+
+        stats = {}
+        for element_type, patterns in element_types.items():
+            label_pattern = patterns['label_pattern']
+            ref_pattern = patterns['ref_pattern']
+
+            defined_labels = re.findall(label_pattern, self.tex_content)
+            referenced_labels = re.findall(ref_pattern, self.tex_content)
+            referenced_labels_set = set(referenced_labels) # For efficient checking
+
+            detailed_labels_status = []
+            for label in defined_labels:
+                is_referenced = label in referenced_labels_set
+                detailed_labels_status.append({'label': label, 'referenced': is_referenced})
+
+            missing_references = [label_status['label'] for label_status in detailed_labels_status if not label_status['referenced']]
+            unused_references = list(set(referenced_labels) - set(defined_labels)) # Unused refs remain the same logic
+
+            stats[element_type] = {
+                'detailed_label_status': detailed_labels_status, # Detailed status for each label
+                'total_defined': len(defined_labels),
+                'total_referenced': len(referenced_labels),
+                'missing_references': missing_references, # Keep missing references for summary if needed
+                'unused_references': unused_references,
+            }
+        return stats
+
+    def get_label_reference_stats_data(self):
+        """Get statistics about labels and references for figures, tables, algorithms, and equations."""
+        return self.label_reference_stats if self.label_reference_stats else {}
+
 
     def validate_citations(self):
         """Validate citations between BibTeX and LaTeX files."""
@@ -333,25 +374,20 @@ def analyze():
     if not allowed_file(bib_file.filename):
         return 'Invalid file type for BibTeX file', 400
 
+    bib_content = None  # Initialize bib_content outside the try block
+    tex_content = None  # Initialize tex_content outside the try block
+
     try:
         bib_content = bib_file.read().decode('utf-8')
-    except UnicodeDecodeError:
-        return 'Invalid BibTeX file encoding (must be UTF-8)', 400
 
-    # Process optional tex file
-    tex_content = None
-    if 'tex_file' in request.files and request.files['tex_file'].filename:
-        tex_file = request.files['tex_file']
-        if not allowed_file(tex_file.filename):
-            return 'Invalid file type for LaTeX file', 400
-
-        try:
+        # Process optional tex file
+        if 'tex_file' in request.files and request.files['tex_file'].filename:
+            tex_file = request.files['tex_file']
+            if not allowed_file(tex_file.filename):
+                return 'Invalid file type for LaTeX file', 400
             tex_content = tex_file.read().decode('utf-8')
-        except UnicodeDecodeError:
-            return 'Invalid LaTeX file encoding (must be UTF-8)', 400
 
-    try:
-        analyzer = BibliometricAnalyzer(bib_content, tex_content)
+        analyzer = BibliometricAnalyzer(bib_content, tex_content) # Instantiate analyzer here
 
         results = {
             'basic_stats': analyzer.get_basic_stats(),
@@ -364,6 +400,7 @@ def analyze():
             'keyword_stats': analyzer.get_keyword_statistics(),
             'yearly_venue_stats': analyzer.get_yearly_venue_stats(),
             'page_stats_by_type': analyzer.get_page_stats_by_type(),
+            'label_reference_stats': analyzer.get_label_reference_stats_data(), # Get label reference stats
 
             # Chart data:
             'yearly_publication_chart': analyzer.get_yearly_publication_chart_data(),
@@ -375,6 +412,8 @@ def analyze():
 
         return render_template('results.html', results=results)
 
+    except UnicodeDecodeError:
+        return 'Invalid BibTeX or LaTeX file encoding (must be UTF-8)', 400 # Catch encoding errors here
     except Exception as e:
         app.logger.error(f"Analysis error: {str(e)}")
         return f'Error analyzing files: {str(e)}', 500
