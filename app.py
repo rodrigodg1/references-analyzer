@@ -15,7 +15,9 @@ from urllib.parse import quote  # Add this with other imports
 import requests
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.bwriter import BibTexWriter
+import networkx as nx
 
+from itertools import combinations
 
 # Application Configuration
 app = Flask(__name__)
@@ -50,6 +52,226 @@ class BibliometricAnalyzer:
         self.citations = self._extract_citations() if tex_content else None
         self.label_reference_stats = self._analyze_labels_and_references() if tex_content else None # Analyze labels and references
 
+    
+
+    def get_collaboration_network(self):
+        """Analyze co-author relationships and collaboration patterns."""
+        G = nx.Graph()
+        author_publications = defaultdict(int)
+        collaboration_strength = defaultdict(int)
+
+        for entry in self.entries:
+            if 'author' in entry:
+                authors = [a.strip() for a in entry['author'].split(' and ')]
+                # Update individual author counts
+                for author in authors:
+                    author_publications[author] += 1
+                # Update collaboration strengths
+                for pair in combinations(sorted(authors), 2):
+                    collaboration_strength[pair] += 1
+                G.add_nodes_from(authors)
+                G.add_edges_from(combinations(authors, 2))
+
+        # Calculate network metrics
+        try:
+            centrality = nx.degree_centrality(G)
+            betweenness = nx.betweenness_centrality(G)
+            communities = nx.algorithms.community.greedy_modularity_communities(G)
+        except Exception as e:
+            app.logger.error(f"Network analysis error: {str(e)}")
+            centrality = {}
+            betweenness = {}
+            communities = []
+
+        return {
+            'total_authors': len(author_publications),
+            'avg_authors_per_paper': self.get_basic_stats()['avg_authors_per_paper'],
+            'most_prolific_author': max(author_publications.items(), key=lambda x: x[1], default=('None', 0)),
+            'strongest_collaboration': max(collaboration_strength.items(), key=lambda x: x[1], default=(('None', 'None'), 0)),
+            'centrality': centrality,
+            'betweenness': betweenness,
+            'communities': communities,
+            'network_data': nx.node_link_data(G)
+        }
+
+    def get_temporal_analysis(self):
+        """Analyze publication patterns over time."""
+        years = defaultdict(lambda: {
+            'count': 0,
+            'authors': set(),
+            'keywords': Counter(),
+            'venues': Counter()
+        })
+
+        for entry in self.entries:
+            if 'year' in entry:
+                year = entry['year']
+                years[year]['count'] += 1
+                
+                if 'author' in entry:
+                    authors = [a.strip() for a in entry['author'].split(' and ')]
+                    years[year]['authors'].update(authors)
+                
+                if 'keywords' in entry:
+                    keywords = [kw.strip() for kw in entry['keywords'].replace(';', ',').split(',')]
+                    years[year]['keywords'].update(keywords)
+                
+                if 'journal' in entry:
+                    years[year]['venues'][entry['journal']] += 1
+                elif 'booktitle' in entry:
+                    years[year]['venues'][entry['booktitle']] += 1
+
+        # Calculate trends
+        trend_metrics = {
+            'year': [],
+            'publications': [],
+            'new_authors': [],
+            'keyword_trends': defaultdict(list),
+            'venue_trends': defaultdict(list)
+        }
+
+        prev_authors = set()
+        for year in sorted(years.keys()):
+            trend_metrics['year'].append(year)
+            trend_metrics['publications'].append(years[year]['count'])
+            
+            # New authors calculation
+            current_authors = years[year]['authors']
+            new_authors = len(current_authors - prev_authors)
+            trend_metrics['new_authors'].append(new_authors)
+            prev_authors.update(current_authors)
+            
+            # Keyword trends
+            for kw, count in years[year]['keywords'].most_common(5):
+                trend_metrics['keyword_trends'][kw].append((year, count))
+                
+            # Venue trends
+            for venue, count in years[year]['venues'].most_common(3):
+                trend_metrics['venue_trends'][venue].append((year, count))
+
+        return trend_metrics
+
+    def get_content_analysis(self):
+        """Analyze paper content through titles and abstracts."""
+        title_words = Counter()
+        abstract_words = Counter()
+        bigrams = Counter()
+        trigrams = Counter()
+
+        for entry in self.entries:
+            # Title analysis
+            if 'title' in entry:
+                title = entry['title'].lower()
+                words = re.findall(r'\w{4,}', title)
+                title_words.update(words)
+                
+                # Generate n-grams
+                bigrams.update(zip(words, words[1:]))
+                trigrams.update(zip(words, words[1:], words[2:]))
+            
+            # Abstract analysis
+            if 'abstract' in entry:
+                abstract = entry['abstract'].lower()
+                abstract_words.update(re.findall(r'\w{4,}', abstract))
+
+        # Calculate keyness scores
+        total_title = sum(title_words.values())
+        total_abstract = sum(abstract_words.values())
+        keyness = {}
+        for word in set(title_words) | set(abstract_words):
+            title_freq = title_words[word]/total_title if total_title else 0
+            abstract_freq = abstract_words[word]/total_abstract if total_abstract else 0
+            keyness[word] = title_freq - abstract_freq
+
+        return {
+            'title_wordcloud': title_words.most_common(50),
+            'abstract_wordcloud': abstract_words.most_common(50),
+            'key_terms': sorted(keyness.items(), key=lambda x: x[1], reverse=True)[:50],
+            'bigrams': bigrams.most_common(20),
+            'trigrams': trigrams.most_common(20)
+        }
+
+    def get_institutional_analysis(self):
+        """Analyze author affiliations and institutions."""
+        institutions = Counter()
+        countries = Counter()
+        domains = Counter()
+
+        for entry in self.entries:
+            if 'author' in entry and 'affiliation' in entry:
+                affils = entry['affiliation'].split(';')
+                for affil in affils:
+                    affil = affil.strip()
+                    if not affil:
+                        continue
+                    
+                    # Extract domain from email
+                    email_match = re.search(r'\b[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b', affil)
+                    if email_match:
+                        domain = email_match.group(1).lower()
+                        domains[domain] += 1
+                    
+                    # Extract country
+                    country_match = re.search(r'\b(?:USA|United States|China|Germany|UK|United Kingdom|France|Japan|India)\b', affil, re.I)
+                    if country_match:
+                        countries[country_match.group(0).title()] += 1
+                    
+                    # Institution name
+                    institution = textwrap.shorten(affil, width=60, placeholder="...")
+                    institutions[institution] += 1
+
+        return {
+            'top_institutions': institutions.most_common(20),
+            'country_distribution': countries,
+            'email_domains': domains.most_common(20)
+        }
+
+    def get_citation_analysis(self):
+        """Deep analysis of citation patterns and impact."""
+        cited_years = []
+        citation_ages = []
+        citation_velocity = defaultdict(list)
+        highly_cited = []
+
+        current_year = datetime.now().year
+        for entry in self.entries:
+            if 'year' in entry:
+                try:
+                    pub_year = int(entry['year'])
+                    cited_years.append(pub_year)
+                    
+                    # Citation age analysis
+                    if self.citations and entry['ID'] in self.citations:
+                        age = current_year - pub_year
+                        citation_ages.append(age)
+                        citation_velocity[pub_year].append(self.citations[entry['ID']])
+                except ValueError:
+                    continue
+
+        # Calculate citation impact metrics
+        citation_velocity = {year: sum(counts)/len(counts) for year, counts in citation_velocity.items()}
+        avg_citation_age = sum(citation_ages)/len(citation_ages) if citation_ages else 0
+
+        # Identify highly cited papers (top 5%)
+        if self.citations:
+            citation_counts = list(self.citations.values())
+            threshold = sorted(citation_counts, reverse=True)[len(citation_counts)//20]
+            highly_cited = [entry for entry in self.entries 
+                           if entry['ID'] in self.citations 
+                           and self.citations[entry['ID']] >= threshold]
+
+        return {
+            'avg_citation_age': round(avg_citation_age, 1),
+            'citation_velocity': citation_velocity,
+            'citation_distribution': Counter(cited_years),
+            'highly_cited_papers': highly_cited[:10],
+            'citation_network': self._build_citation_network()
+        }
+
+
+
+
+    # In the BibliometricAnalyzer class
     def _extract_citations(self):
         """Extract citations from LaTeX content."""
         cite_patterns = [
@@ -73,11 +295,58 @@ class BibliometricAnalyzer:
                         citations[key] += 1
                         citation_locations[key].append({
                             'line': line_num,
-                            'context': line.strip()
+                            'context': line.strip()  # Store context as string
                         })
 
         self.citation_locations = citation_locations
         return citations
+
+    # Update the citation network builder
+    def _build_citation_network(self):
+        """Build citation network graph if LaTeX references are available."""
+        if not self.tex_content:
+            return None
+        
+        G = nx.DiGraph()
+        
+        # Add all papers as nodes
+        for entry in self.entries:
+            G.add_node(entry['ID'], **entry)
+        
+        # Add citation edges
+        for cite, locations in self.citation_locations.items():
+            if cite in G.nodes:
+                # Create edges from context lines to citations
+                for loc in locations:
+                    context_str = loc['context']  # Get the actual line text
+                    G.add_edge(context_str, cite)  # Link context line to citation
+
+        return {
+            'nodes': list(G.nodes),
+            'edges': list(G.edges),
+            'most_cited': sorted(G.in_degree, key=lambda x: x[1], reverse=True)[:10]
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def _analyze_labels_and_references(self):
         """Analyze labels and references for figures, tables, algorithms, and equations and return detailed status."""
@@ -407,12 +676,21 @@ def analyze():
             'page_stats_by_type': analyzer.get_page_stats_by_type(),
             'label_reference_stats': analyzer.get_label_reference_stats_data(), # Get label reference stats
 
+            'collaboration_network': analyzer.get_collaboration_network(),
+            'temporal_analysis': analyzer.get_temporal_analysis(),
+            'content_analysis': analyzer.get_content_analysis(),
+            'institutional_analysis': analyzer.get_institutional_analysis(),
+            'citation_analysis': analyzer.get_citation_analysis(),
+
+
             # Chart data:
             'yearly_publication_chart': analyzer.get_yearly_publication_chart_data(),
             'entry_type_chart': analyzer.get_entry_type_chart_data(),
             'top_venues_chart': analyzer.get_top_venues_chart_data(),
             'top_authors_chart': analyzer.get_top_authors_chart_data(),
             'keyword_chart': analyzer.get_keyword_chart_data()
+
+
         }
 
         return render_template('results.html', results=results)
