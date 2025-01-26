@@ -1,0 +1,39 @@
+<!-- templates/doi2bib.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white shadow rounded-lg p-6">
+    <h2 class="text-2xl font-bold mb-4">DOI to BibTeX Converter</h2>
+    
+    <form action="{{ url_for('convert_dois') }}" method="post" class="space-y-4">
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Enter DOIs (one per line):
+            </label>
+            <textarea 
+                name="dois"
+                rows="10"
+                placeholder="Example:
+10.1038/s41586-020-2649-2
+10.1126/science.1258955
+10.1016/j.cell.2020.03.022"
+                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm font-mono text-sm"
+                required></textarea>
+            <p class="text-sm text-gray-500 mt-2">
+                Enter one DOI per line. Crossref API will be used to convert to BibTeX.
+            </p>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <button type="submit" 
+                    class="flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                Convert to BibTeX
+            </button>
+            <a href="{{ url_for('index') }}" 
+               class="flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                Back to Analyzer
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -10,7 +10,12 @@ from datetime import datetime
 import io
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from statistics import mean, median, stdev  # Import statistics here
+from statistics import mean, median, stdev  
+from urllib.parse import quote  # Add this with other imports
+import requests
+from bibtexparser.bparser import BibTexParser
+from bibtexparser.bwriter import BibTexWriter
+
 
 # Application Configuration
 app = Flask(__name__)
@@ -417,6 +422,116 @@ def analyze():
     except Exception as e:
         app.logger.error(f"Analysis error: {str(e)}")
         return f'Error analyzing files: {str(e)}', 500
+
+
+
+
+# Add to your existing routes
+@app.route('/doi2bib')
+def doi2bib():
+    """Render the DOI to BibTeX conversion page."""
+    return render_template('doi2bib.html')
+
+
+
+
+
+@app.route('/convert-dois', methods=['POST'])
+@limiter.limit("10 per minute")
+def convert_dois():
+    """Convert DOIs from text input to BibTeX entries with DOI keys."""
+    dois = request.form.get('dois', '')
+    
+    if not dois:
+        return 'No DOIs entered', 400
+
+    try:
+        clean_dois = [doi.strip() for doi in dois.splitlines() if doi.strip()]
+        if not clean_dois:
+            return 'No valid DOIs entered', 400
+
+        bib_entries = []
+        headers = {'User-Agent': 'doi2bib-flask/1.0 (mailto:your@email.com)'}
+        writer = BibTexWriter()
+        writer.indent = '  '
+        writer.order_entries_by = ('author', 'title', 'journal', 'year', 
+                                  'volume', 'number', 'pages', 'doi', 'url')
+
+        successful_dois = []
+        failed_dois = []
+
+        for doi in clean_dois:
+            try:
+                doi = doi.replace('"', '').replace("'", "").split()[0]  # Handle any extra text
+                encoded_doi = quote(doi, safe='')
+                url = f"https://api.crossref.org/works/{encoded_doi}/transform/application/x-bibtex"
+                
+                response = requests.get(url, headers=headers, timeout=10)
+                response.raise_for_status()
+                
+                # Create new parser instance for each DOI
+                parser = BibTexParser(common_strings=True)
+                parser.ignore_nonstandard_types = False
+                bib_db = bibtexparser.loads(response.text, parser=parser)
+                
+                # Handle multiple entries by taking the first valid one
+                if not bib_db.entries:
+                    raise ValueError("No entries found in API response")
+                
+                # Select first entry that looks like a paper
+                valid_entry = next((e for e in bib_db.entries 
+                                  if e.get('ENTRYTYPE') in ['article', 'inproceedings', 'phdthesis']), None)
+                
+                if not valid_entry:
+                    raise ValueError("No valid entry type in response")
+                
+                # Force DOI-based citation key and fields
+                valid_entry['ID'] = doi
+                valid_entry['doi'] = doi
+                
+                # Create new database with just this entry
+                new_db = bibtexparser.bibdatabase.BibDatabase()
+                new_db.entries = [valid_entry]
+                
+                formatted_entry = writer.write(new_db).strip()
+                bib_entries.append(formatted_entry)
+                successful_dois.append(doi)
+
+            except Exception as e:
+                failed_dois.append(doi)
+                app.logger.warning(f"Failed {doi}: {str(e)}")
+                continue
+
+        if not bib_entries:
+            return 'No valid BibTeX entries could be retrieved', 400
+
+        output = '\n\n'.join(bib_entries)
+        app.logger.info(f"Converted {len(successful_dois)}/{len(clean_dois)} DOIs")
+        
+        mem_file = io.BytesIO(output.encode('utf-8'))
+        mem_file.seek(0)
+        
+        response = send_file(
+            mem_file,
+            as_attachment=True,
+            download_name="references.bib",
+            mimetype="text/x-bibtex"
+        )
+        
+        response.headers['X-Success-Count'] = str(len(successful_dois))
+        response.headers['X-Failed-DOIs'] = ','.join(failed_dois)
+        
+        return response
+
+    except Exception as e:
+        app.logger.error(f"System error: {str(e)}")
+        return f'Conversion failed: {str(e)}', 500
+
+
+
+
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
