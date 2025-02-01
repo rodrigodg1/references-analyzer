@@ -1,17 +1,46 @@
-<!-- templates/results.html -->
-<!-- templates/results.html -->
 {% extends "base.html" %}
 
 {% block content %}
 <div class="space-y-6">
 
+    <!-- Abbreviation Analysis -->
+    {% if redundant_definitions %}
+    <div class="bg-white shadow rounded-lg p-6 mb-6 border-l-4 border-yellow-500">
+      <h2 class="text-2xl font-bold mb-4">Abbreviations Analysis</h2>
+      <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md mb-4" role="alert">
+        <p class="font-bold">Redundant Abbreviation Definitions Detected:</p>
+        <ul class="list-disc pl-5 mt-2">
+          {% for warning in redundant_definitions %}
+          <li class="mb-3">
+            <strong>Abbreviation:</strong> {{ warning.abbreviation }} <br>
+            <ul class="list-disc pl-5 mt-1">
+              <li>
+                <span class="font-semibold">Redundant Definition (Line {{ warning.line_number }}):</span>
+                "{{ warning.term }}" - Context: <em>"{{ warning.line_context }}"</em>
+              </li>
+              <li>
+                <span class="font-semibold">Original Definition (Line {{ warning.original_line_number }})</span>
+              </li>
+            </ul>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% elif all_ok and original_text %}
+    <div class="bg-white shadow rounded-lg p-6 mb-6 border-l-4 border-green-500">
+      <h2 class="text-2xl font-bold mb-4">Abbreviations Analysis</h2>
+      <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md" role="alert">
+        <p class="font-bold">No Redundant Abbreviation Definitions Found!</p>
+        <p>Good job on consistent abbreviation usage.</p>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- Citation Analysis -->
     {% if results.citation_stats %}
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-2xl font-bold mb-4">Citation Analysis</h2>
-
-        <!-- Citation Overview -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="border rounded-lg p-4">
                 <h3 class="text-sm font-medium text-gray-500">Total Citations</h3>
@@ -26,8 +55,6 @@
                 <p class="mt-1 text-xl font-semibold">{{ results.citation_stats.total_references }}</p>
             </div>
         </div>
-
-        <!-- Missing Citations -->
         {% if results.citation_stats.missing_citations %}
         <div class="mt-6">
             <h3 class="text-lg font-semibold mb-3">Missing Citations</h3>
@@ -55,8 +82,6 @@
             </div>
         </div>
         {% endif %}
-
-        <!-- Unused Citations -->
         {% if results.citation_stats.unused_citations %}
         <div class="mt-6">
             <h3 class="text-lg font-semibold mb-3">Unused Citations</h3>
@@ -81,32 +106,29 @@
     </div>
     {% endif %}
 
-    <!-- Label Reference Analysis - Checklist Style -->
+    <!-- Label Reference Analysis -->
     {% if results.label_reference_stats %}
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-2xl font-bold mb-4">Label Reference Analysis</h2>
         <i>verify if it was properly referenced in the text</i>
-        <!-- Figure Analysis Checklist -->
         {% if results.label_reference_stats.figure %}
         <div class="mb-8">
             <h3 class="text-xl font-semibold mb-3">Figure Reference Checklist
             <br>
             <i class="block text-gray-500 text-sm mb-2">Total Figures Defined: {{ results.label_reference_stats.figure.total_defined }}, Referenced: {{ results.label_reference_stats.figure.total_referenced }}</i>
             </h3>
-
             <ul class="space-y-2">
                 {% for label_status in results.label_reference_stats.figure.detailed_label_status %}
                 <li class="flex items-center justify-between">
                     <span class="font-medium">{{ label_status.label }}</span>
                     {% if label_status.referenced %}
-                    <span class="text-green-600" title="Referenced">✅</span>  <!-- Checkmark -->
+                    <span class="text-green-600" title="Referenced">✅</span>
                     {% else %}
-                    <span class="text-red-600" title="Not Referenced">❌</span>   <!-- Ballot X -->
+                    <span class="text-red-600" title="Not Referenced">❌</span>
                     {% endif %}
                 </li>
                 {% endfor %}
             </ul>
-
             {% if results.label_reference_stats.figure.missing_references %}
             <div class="mt-4">
                 <p class="text-sm text-gray-500">
@@ -116,23 +138,20 @@
             {% endif %}
         </div>
         {% endif %}
-
-        <!-- Table Analysis Checklist -->
         {% if results.label_reference_stats.table %}
         <div class="mb-8">
             <h3 class="text-xl font-semibold mb-3">Table Reference Checklist
              <br>
              <i class="block text-gray-500 text-sm mb-2">Total Tables Defined: {{ results.label_reference_stats.table.total_defined }}, Referenced: {{ results.label_reference_stats.table.total_referenced }}</i>
              </h3>
-
             <ul class="space-y-2">
                 {% for label_status in results.label_reference_stats.table.detailed_label_status %}
                 <li class="flex items-center justify-between">
                     <span class="font-medium">{{ label_status.label }}</span>
                     {% if label_status.referenced %}
-                        <span class="text-green" title="Referenced">✅</span>  <!-- Checkmark -->
+                        <span class="text-green" title="Referenced">✅</span>
                     {% else %}
-                        <span class="text-red" title="Not Referenced">❌</span>   <!-- Ballot X -->
+                        <span class="text-red" title="Not Referenced">❌</span>
                     {% endif %}
                 </li>
                 {% endfor %}
@@ -146,23 +165,20 @@
             {% endif %}
         </div>
         {% endif %}
-
-        <!-- Algorithm Analysis Checklist -->
         {% if results.label_reference_stats.algorithm %}
         <div class="mb-8">
             <h3 class="text-xl font-semibold mb-3">Algorithm Reference Checklist
              <br>
              <i class="block text-gray-500 text-sm mb-2">Total Algorithms Defined: {{ results.label_reference_stats.algorithm.total_defined }}, Referenced: {{ results.label_reference_stats.algorithm.total_referenced }}</i>
              </h3>
-
             <ul class="space-y-2">
                 {% for label_status in results.label_reference_stats.algorithm.detailed_label_status %}
                 <li class="flex items-center justify-between">
                     <span class="font-medium">{{ label_status.label }}</span>
                     {% if label_status.referenced %}
-                    <span class="text-green-600" title="Referenced">✅</span>  <!-- Checkmark -->
+                    <span class="text-green-600" title="Referenced">✅</span>
                     {% else %}
-                    <span class="text-red-600" title="Not Referenced">❌</span>   <!-- Ballot X -->
+                    <span class="text-red-600" title="Not Referenced">❌</span>
                     {% endif %}
                 </li>
                 {% endfor %}
@@ -176,23 +192,20 @@
             {% endif %}
         </div>
         {% endif %}
-
-        <!-- Equation Analysis Checklist -->
         {% if results.label_reference_stats.equation %}
         <div class="mb-8">
             <h3 class="text-xl font-semibold mb-3">Equation Reference Checklist
              <br>
              <i class="block text-gray-500 text-sm mb-2">Total Equations Defined: {{ results.label_reference_stats.equation.total_defined }}, Referenced: {{ results.label_reference_stats.equation.total_referenced }}</i>
              </h3>
-
             <ul class="space-y-2">
                 {% for label_status in results.label_reference_stats.equation.detailed_label_status %}
                 <li class="flex items-center justify-between">
                     <span class="font-medium">{{ label_status.label }}</span>
                     {% if label_status.referenced %}
-                    <span class="text-green-600" title="Referenced">✅</span>  <!-- Checkmark -->
+                    <span class="text-green-600" title="Referenced">✅</span>
                     {% else %}
-                    <span class="text-red-600" title="Not Referenced">❌</span>   <!-- Ballot X -->
+                    <span class="text-red-600" title="Not Referenced">❌</span>
                     {% endif %}
                 </li>
                 {% endfor %}
@@ -206,17 +219,8 @@
             {% endif %}
         </div>
         {% endif %}
-
     </div>
     {% endif %}
-
-
-
-
-
-
-
-
 
     <!-- Basic Statistics -->
     <div class="bg-white shadow rounded-lg p-6">
@@ -254,13 +258,6 @@
         </div>
     </div>
 
-    <!-- Publication Types Chart
-    <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-2xl font-bold mb-4">Publication Types Chart</h2>
-        <canvas id="entryTypeChart"></canvas>
-    </div>
-    -->
-
     <!-- Top Venues -->
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-2xl font-bold mb-4">Top Publication Venues</h2>
@@ -284,8 +281,6 @@
         </div>
     </div>
 
-
-
     <!-- Author Statistics -->
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-2xl font-bold mb-4">Most Prolific Authors</h2>
@@ -308,9 +303,6 @@
             </table>
         </div>
     </div>
-
-
-
 
     <!-- Page Statistics -->
     {% if results.page_stats %}
@@ -395,7 +387,6 @@
         </div>
     </div>
 
-
     <!-- Yearly Venue Distribution -->
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-2xl font-bold mb-4">Yearly Venue Distribution</h2>
@@ -422,7 +413,6 @@
             </table>
         </div>
     </div>
-
 
     <!-- Page Statistics by Entry Type -->
     {% if results.page_stats_by_type %}
@@ -458,11 +448,9 @@
     </div>
     {% endif %}
 
-<!-- Add after Page Statistics section -->
 <!-- Collaboration Network Analysis -->
 <div class="bg-white shadow rounded-lg p-6">
     <h2 class="text-2xl font-bold mb-4">Collaboration Network</h2>
-    
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="border rounded-lg p-4">
             <h3 class="text-sm font-medium text-gray-500">Most Prolific Author</h3>
@@ -480,7 +468,6 @@
             </p>
         </div>
     </div>
-
     <div class="mt-6">
         <h3 class="text-lg font-semibold mb-3">Research Communities</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -501,7 +488,6 @@
 <!-- Temporal Analysis -->
 <div class="bg-white shadow rounded-lg p-6">
     <h2 class="text-2xl font-bold mb-4">Temporal Trends</h2>
-    
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <h3 class="text-lg font-semibold mb-2">Publication Growth</h3>
@@ -512,7 +498,6 @@
             <canvas id="authorGrowthChart"></canvas>
         </div>
     </div>
-
     <div class="mt-6">
         <h3 class="text-lg font-semibold mb-3">Emerging Keywords</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -526,11 +511,9 @@
     </div>
 </div>
 
-
 <!-- Content Analysis -->
 <div class="bg-white shadow rounded-lg p-6">
     <h2 class="text-2xl font-bold mb-4">Content Analysis</h2>
-    
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <h3 class="text-lg font-semibold mb-2">Title Keywords</h3>
@@ -560,7 +543,6 @@
 <!-- Institutional Analysis -->
 <div class="bg-white shadow rounded-lg p-6">
     <h2 class="text-2xl font-bold mb-4">Institutional Analysis</h2>
-    
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
             <h3 class="text-lg font-semibold mb-2">Top Institutions</h3>
@@ -573,7 +555,6 @@
                 {% endfor %}
             </ul>
         </div>
-        
         <div>
             <h3 class="text-lg font-semibold mb-2">Countries</h3>
             <ul class="space-y-1">
@@ -585,7 +566,6 @@
                 {% endfor %}
             </ul>
         </div>
-        
         <div>
             <h3 class="text-lg font-semibold mb-2">Email Domains</h3>
             <ul class="space-y-1">
@@ -600,27 +580,23 @@
     </div>
 </div>
 
-<!-- Citation Analysis -->
+<!-- Citation Impact -->
 <div class="bg-white shadow rounded-lg p-6">
     <h2 class="text-2xl font-bold mb-4">Citation Impact</h2>
-    
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="border rounded-lg p-4">
             <h3 class="text-sm font-medium text-gray-500">Avg. Citation Age</h3>
             <p class="mt-1 text-xl font-semibold">{{ results.citation_analysis.avg_citation_age }} years</p>
         </div>
-        
         <div class="border rounded-lg p-4">
             <h3 class="text-sm font-medium text-gray-500">Highly Cited Papers</h3>
             <p class="mt-1 text-xl font-semibold">{{ results.citation_analysis.highly_cited_papers|length }}</p>
         </div>
     </div>
-
     <div class="mt-6">
         <h3 class="text-lg font-semibold mb-3">Citation Velocity</h3>
         <canvas id="citationVelocityChart"></canvas>
     </div>
-
     {% if results.citation_analysis.highly_cited_papers %}
     <div class="mt-6">
         <h3 class="text-lg font-semibold mb-3">Most Cited Papers</h3>
@@ -636,15 +612,13 @@
     {% endif %}
 </div>
 
-
-
-    <!-- Return Button -->
-    <div class="mt-6 flex justify-center">
-        <a href="{{ url_for('index') }}"
-           class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-            Analyze Another File
-        </a>
-    </div>
+<!-- Return Button -->
+<div class="mt-6 flex justify-center">
+    <a href="{{ url_for('index') }}"
+       class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+        Analyze Another File
+    </a>
+</div>
 </div>
 
 <script>
@@ -652,7 +626,7 @@
         // Yearly Publication Chart
         const yearlyPubCtx = document.getElementById('yearlyPublicationChart').getContext('2d');
         new Chart(yearlyPubCtx, {
-            type: 'bar', // Or 'line'
+            type: 'bar',
             data: {{ results.yearly_publication_chart|safe }},
             options: {
                 scales: {
@@ -662,58 +636,6 @@
                 }
             }
         });
-
-        // Entry Type Chart
-        const entryTypeCtx = document.getElementById('entryTypeChart').getContext('2d');
-        new Chart(entryTypeCtx, {
-            type: 'pie',
-            data: {{ results.entry_type_chart|safe }},
-        });
-
-        // Top Venues Chart
-        const topVenuesCtx = document.getElementById('topVenuesChart').getContext('2d');
-        new Chart(topVenuesCtx, {
-            type: 'bar',
-            data: {{ results.top_venues_chart|safe }},
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // Top Authors Chart
-        const topAuthorsCtx = document.getElementById('topAuthorsChart').getContext('2d');
-        new Chart(topAuthorsCtx, {
-            type: 'bar',
-            data: {{ results.top_authors_chart|safe }},
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // Keyword Chart
-        const keywordCtx = document.getElementById('keywordChart').getContext('2d');
-        new Chart(keywordCtx, {
-            type: 'bar',
-            data: {{ results.keyword_chart|safe }},
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                },
-            },
-        });
-    
-
-
 
         // Publication Growth Chart
         new Chart(document.getElementById('publicationGrowthChart').getContext('2d'), {
@@ -742,20 +664,7 @@
                 }]
             }
         });
-
-
-
-
-
     });
-
-
-
-
-
-
-
-
 </script>
 
 {% endblock %}
