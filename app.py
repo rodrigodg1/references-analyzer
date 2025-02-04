@@ -15,6 +15,26 @@ import networkx as nx
 import textwrap
 from itertools import combinations
 
+
+
+
+LATEX_KEYWORDS = [
+    r"\\documentclass", r"\\usepackage", r"\\begin", r"\\end", r"\\section", r"\\subsection",
+    r"\\subsubsection", r"\\paragraph", r"\\part", r"\\chapter", r"\\textbf", r"\\textit",
+    r"\\emph", r"\\underline", r"\\footnote", r"\\caption", r"\\label", r"\\ref", r"\\pageref",
+    r"\\tableofcontents", r"\\include", r"\\input", r"\\bibliographystyle", r"\\bibliography",
+    r"\\newcommand", r"\\renewcommand", r"\\maketitle", r"\\author", r"\\title", r"\\date",
+    r"\\item", r"\\enumerate", r"\\itemize", r"\\description", r"\\begin{equation}", r"\\end{equation}",
+    r"\\begin{align}", r"\\end{align}", r"\\begin{array}", r"\\end{array}", r"\\begin{table}", r"\\end{table}",
+    r"\\begin{figure}", r"\\end{figure}", r"\\includegraphics", r"\\centering", r"\\hline",
+    r"\\cline", r"\\multicolumn", r"\\multirow", r"\\frac", r"\\sum", r"\\int", r"\\prod",
+    r"\\lim", r"\\log", r"\\sin", r"\\cos", r"\\tan", r"\\sqrt", r"\\left", r"\\right",
+    r"\\overline", r"\\underline", r"\\mathbb", r"\\mathbf", r"\\mathcal", r"\\mathrm", r"\\text"
+]
+
+
+
+
 # Application Configuration
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
@@ -775,31 +795,69 @@ def convert_dois():
 
 
 
+
+
 def process_tex_content(tex_str, bib_database):
-    """Processes LaTeX content, finds citations, and creates clickable links."""
-    citation_pattern = r"\\cite\{([^}]+)\}"
-    citation_details_map = {}
+    """Processes LaTeX content, removes comments, finds citations, and highlights LaTeX syntax."""
+    tex_str = remove_tex_comments(tex_str)  # Remove comments
+
+    citation_styles = {
+        r"(\\cite)\{([^}]+)\}": "color: blue;",
+        r"(\\citep)\{([^}]+)\}": "color: blue;",
+        r"(\\citet)\{([^}]+)\}": "color: blue;",
+        r"(\\citeauthor)\{([^}]+)\}": "color: blue;",
+        r"(\\citeyear)\{([^}]+)\}": "color: blue;",
+        r"(\\citealp)\{([^}]+)\}": "color: blue;"
+    }
+
+    latex_syntax_style = "color: darkred; font-weight: bold;"
+
     last_pos = 0
     html_parts = []
+    matches = []
 
-    for match in re.finditer(citation_pattern, tex_str):
-        citation_keys_str = match.group(1)
-        citation_keys = [key.strip() for key in citation_keys_str.split(',')] # Handle multiple keys
+    # Match citations
+    for pattern in citation_styles.keys():
+        for match in re.finditer(pattern, tex_str):
+            matches.append((match, pattern, "citation"))
 
-        # Add text before the citation
+    # Match LaTeX keywords
+    for keyword in LATEX_KEYWORDS:
+        for match in re.finditer(keyword, tex_str):
+            matches.append((match, keyword, "syntax"))
+
+    matches.sort(key=lambda x: x[0].start())  # Ensure order of matches
+
+    for match, pattern, match_type in matches:
         html_parts.append(tex_str[last_pos:match.start()])
 
-        citation_links_html = []
-        for key in citation_keys:
-            citation_links_html.append(f'<a href="#" class="citation-link" data-citation-key="{key}" style="color: blue; text-decoration: underline;">{key}</a>')
+        if match_type == "citation":
+            citation_command = match.group(1)  # Extract the citation command (e.g., \cite)
+            citation_keys_str = match.group(2)
+            citation_keys = [key.strip() for key in citation_keys_str.split(',')]  # Handle multiple keys
+            citation_style = citation_styles[pattern]
 
-        html_parts.append(f'\\cite{{{" ".join(citation_links_html)}}}') # Reconstruct \cite with links
+            citation_links_html = []
+            for key in citation_keys:
+                citation_links_html.append(
+                    f'<a href="#" class="citation-link" data-citation-key="{key}" '
+                    f'style="{citation_style} text-decoration: underline;">{key}</a>'
+                )
+
+            html_parts.append(f'<span style="{citation_style}">{citation_command}</span>' +
+                              f'{{{" ".join(citation_links_html)}}}')  # Reconstruct with styled citation command
+
+        elif match_type == "syntax":
+            html_parts.append(f'<span style="{latex_syntax_style}">{match.group()}</span>')
+
         last_pos = match.end()
 
-    # Add remaining text after last citation
-    html_parts.append(tex_str[last_pos:])
+    html_parts.append(tex_str[last_pos:])  # Append remaining text
 
     return "".join(html_parts)
+
+
+
 
 
 @app.route('/get_citation_detail/<path:citation_key>')
@@ -906,11 +964,11 @@ def remove_tex_comments(tex_str):
 
 
 
-
-
 def process_tex_content(tex_str, bib_database):
-    """Processes LaTeX content, removes comments, finds citations, and creates clickable links with different colors for citation commands."""
+    """Processes LaTeX content, removes comments, finds citations, and highlights LaTeX syntax."""
     tex_str = remove_tex_comments(tex_str)  # Remove comments
+
+    # Citation styling
     citation_styles = {
         r"(\\cite)\{([^}]+)\}": "color: blue;",
         r"(\\citep)\{([^}]+)\}": "color: blue;",
@@ -919,38 +977,58 @@ def process_tex_content(tex_str, bib_database):
         r"(\\citeyear)\{([^}]+)\}": "color: blue;",
         r"(\\citealp)\{([^}]+)\}": "color: blue;"
     }
-    
+
+    latex_syntax_style = "color: purple; font-weight: bold;"  # Style for LaTeX commands
+
+    # Store modified output
     last_pos = 0
     html_parts = []
     matches = []
-    
-    for pattern in citation_styles.keys():
-        for m in re.finditer(pattern, tex_str):
-            matches.append((m, pattern))
-    
-    matches.sort(key=lambda x: x[0].start())  # Ensure order of matches
-    
-    for match, pattern in matches:
-        citation_command = match.group(1)  # Extract the citation command (e.g., \citep)
-        citation_keys_str = match.group(2)
-        citation_keys = [key.strip() for key in citation_keys_str.split(',')]  # Handle multiple keys
-        citation_style = citation_styles[pattern]
-    
-        # Add text before the citation
-        html_parts.append(tex_str[last_pos:match.start()])
-    
-        citation_links_html = []
-        for key in citation_keys:
-            citation_links_html.append(f'<a href="#" class="citation-link" data-citation-key="{key}" style="{citation_style} text-decoration: underline;">{key}</a>')
-    
-        html_parts.append(f'<span style="{citation_style}">{citation_command}</span>' + f'{{{" ".join(citation_links_html)}}}')  # Reconstruct with styled citation command
-        last_pos = match.end()
-    
-    # Add remaining text after last citation
-    html_parts.append(tex_str[last_pos:])
-    
-    return "".join(html_parts)
 
+    # Match citations first
+    for pattern in citation_styles.keys():
+        for match in re.finditer(pattern, tex_str):
+            matches.append((match.start(), match.end(), match, pattern, "citation"))
+
+    # Match LaTeX reserved keywords
+    for keyword in LATEX_KEYWORDS:
+        for match in re.finditer(keyword, tex_str):
+            matches.append((match.start(), match.end(), match, keyword, "syntax"))
+
+    # Sort all matches by their position in the text
+    matches.sort(key=lambda x: x[0])
+
+    # Process and replace matches
+    for start, end, match, pattern, match_type in matches:
+        # Append the text before the match
+        html_parts.append(tex_str[last_pos:start])
+
+        if match_type == "citation":
+            citation_command = match.group(1)  # Extract the citation command (e.g., \cite)
+            citation_keys_str = match.group(2)
+            citation_keys = [key.strip() for key in citation_keys_str.split(',')]  # Handle multiple keys
+            citation_style = citation_styles[pattern]
+
+            citation_links_html = []
+            for key in citation_keys:
+                citation_links_html.append(
+                    f'<a href="#" class="citation-link" data-citation-key="{key}" '
+                    f'style="{citation_style} text-decoration: underline;">{key}</a>'
+                )
+
+            html_parts.append(f'<span style="{citation_style}">{citation_command}</span>' +
+                              f'{{{" ".join(citation_links_html)}}}')  # Reconstruct with styled citation command
+
+        elif match_type == "syntax":
+            # Highlight LaTeX command
+            html_parts.append(f'<span style="{latex_syntax_style}">{match.group()}</span>')
+
+        last_pos = end  # Move the cursor to the next position
+
+    # Append remaining text
+    html_parts.append(tex_str[last_pos:])
+
+    return "".join(html_parts)
 
 
 
