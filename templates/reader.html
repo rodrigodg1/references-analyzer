@@ -7,158 +7,158 @@
         <div>
             <label>BibTeX File</label>
             <input type="file" name="bib_file" accept=".bib" required
-                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
         </div>
         <div>
             <label>LaTeX File</label>
             <input type="file" name="tex_file" accept=".tex" required
-                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
         </div>
-        <button type="submit" 
-                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+        <button type="submit"
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
             Analyze Files
         </button>
     </form>
 </div>
-    
-    {% if error_message %}
-        <p class="error">{{ error_message }}</p>
+
+{% if error_message %}
+<p class="error">{{ error_message }}</p>
+{% endif %}
+
+<div class="tex-content-display bg-white shadow rounded-lg p-6 mt-4">
+
+    {% if tex_content_html %}
+    {{ tex_content_html | safe }}
+    {% else %}
+    <p>Upload a .tex and .bib file to view content and verify citations.</p>
     {% endif %}
 
-<div class="bg-white shadow rounded-lg p-6">
-    <div class="tex-content-display">
-        {% if tex_content_html %}
-            {{ tex_content_html | safe }}
-        {% else %}
-            <p>Upload a .tex and .bib file to view content and verify citations.</p>
-        {% endif %}
-    </div>
 </div>
 
-    <!-- Re-introduce Tooltip -->
-    <div id="citation-tooltip" class="tooltip" style="display: none; position: absolute; z-index: 10;">
-        <div id="citation-tooltip-content"></div>
-    </div>
+<!-- Re-introduce Tooltip -->
+<div id="citation-tooltip" class="tooltip" style="display: none; position: absolute; z-index: 10;">
+    <div id="citation-tooltip-content"></div>
+</div>
 
-    <footer>
-        <p>© 2024 My LaTeX Citation Verifier</p>
-    </footer>
+<footer>
+    <p>© 2024 My LaTeX Citation Verifier</p>
+</footer>
 
-    <script>
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Bootstrap tooltips and popovers
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.map(function(tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        
-            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-            popoverTriggerList.map(function(popoverTriggerEl) {
-                return new bootstrap.Popover(popoverTriggerEl, {
-                    html: true, // Allows HTML content inside popover
-                    trigger: 'click',
-                    placement: 'auto',
-                    customClass: 'wide-popover' // Custom class for width adjustment
-                });
-            });
-        
-            // Event listener for citation links
-            document.querySelectorAll('.citation-link').forEach(link => {
-                link.addEventListener('click', function(event) {
-                    event.preventDefault();
-        
-                    const citationKey = this.dataset.citationKey;
-                    const encodedCitationKey = encodeURIComponent(citationKey);
-                    const citationDetailURL = `/get_citation_detail/${encodedCitationKey}`;
-        
-                    fetch(citationDetailURL)
-                        .then(response => response.json())
-                        .then(data => {
-                            let detailsHTML = "";
-        
-                            if (data.citation_info && data.citation_info.doi) {
-                                const doi = data.citation_info.doi;
+<script>
 
-                                // Fetch paper details from Semantic Scholar
-                                fetch(`https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeURIComponent(doi)}?fields=title,abstract,tldr,citationCount,year,authors,journal`)
-                                    .then(semanticsResponse => semanticsResponse.json())
-                                    .then(semanticsData => {
-                                        detailsHTML += "<ul>";
-
-                                        // Display DOI and URL
-                                        detailsHTML += `<li><strong>DOI:</strong> ${doi}</li>`;
-                                        detailsHTML += `<li><strong>URL:</strong> <a href="https://doi.org/${doi}" target="_blank">https://doi.org/${doi}</a></li>`;
-                                        
-                                        // Add Litmaps button
-                                        detailsHTML += `<li><a href="https://app.litmaps.com/search?q=${encodeURIComponent(doi)}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">View on Litmaps</a></li>`;
-                                        
-
-                                        if (semanticsData.title) {
-                                            detailsHTML += `<li><strong>Title:</strong> ${semanticsData.title}</li>`;
-                                        }        
-
-                                        // Add Semantic Scholar TLDR Summary
-                                        if (semanticsData.tldr && semanticsData.tldr.text) {
-                                            detailsHTML += `<li><strong>TLDR:</strong><i> ${semanticsData.tldr.text}</i></li>`;
-                                        } else {
-                                            detailsHTML += `<li><strong>TLDR:</strong> No summary available.</li>`;
-                                        }
-
-                                        // Add other details from Semantic Scholar
-
-                                        if (semanticsData.abstract) {
-                                            detailsHTML += `<li><strong>Abstract:</strong> ${semanticsData.abstract}</li>`;
-                                        }
-                                        if (semanticsData.citationCount) {
-                                            detailsHTML += `<li><strong>Citations:</strong> ${semanticsData.citationCount}</li>`;
-                                        }
-                                        if (semanticsData.year) {
-                                            detailsHTML += `<li><strong>Year:</strong> ${semanticsData.year}</li>`;
-                                        }
-                                        if (semanticsData.authors && semanticsData.authors.length > 0) {
-                                            const authors = semanticsData.authors.map(author => author.name).join(", ");
-                                            detailsHTML += `<li><strong>Author(s):</strong> ${authors}</li>`;
-                                        }
-                                        if (semanticsData.journal) {
-                                            detailsHTML += `<li><strong>Journal:</strong> ${semanticsData.journal.name || "N/A"}</li>`;
-                                        }
-                                        detailsHTML += "</ul>";
-
-                                        // Remove existing popovers before creating a new one
-                                        let existingPopover = bootstrap.Popover.getInstance(link);
-                                        if (existingPopover) {
-                                            existingPopover.dispose();
-                                        }
-
-                                        // Set popover content dynamically
-                                        link.setAttribute('data-bs-content', detailsHTML);
-                                        let popover = new bootstrap.Popover(link, {
-                                            html: true,
-                                            trigger: 'click', // Ensure it only opens on click
-                                            placement: 'auto',
-                                            customClass: 'wide-popover' // Apply custom width
-                                        });
-                                        popover.show();
-                                    })
-                                    .catch(semanticsError => {
-                                        console.error('Error fetching Semantic Scholar data:', semanticsError);
-                                        detailsHTML += `<p>Error: Failed to load Semantic Scholar data.</p>`;
-                                    });
-                            } else {
-                                detailsHTML = `<p>Error: ${data.error || 'Citation details not found'}</p>`;
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error fetching citation info:', error);
-                        });
-                });
-            });
-        
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize Bootstrap tooltips and popovers
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
         });
 
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl, {
+                html: true, // Allows HTML content inside popover
+                trigger: 'click',
+                placement: 'auto',
+                customClass: 'wide-popover' // Custom class for width adjustment
+            });
+        });
+
+        // Event listener for citation links
+        document.querySelectorAll('.citation-link').forEach(link => {
+            link.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                const citationKey = this.dataset.citationKey;
+                const encodedCitationKey = encodeURIComponent(citationKey);
+                const citationDetailURL = `/get_citation_detail/${encodedCitationKey}`;
+
+                fetch(citationDetailURL)
+                    .then(response => response.json())
+                    .then(data => {
+                        let detailsHTML = "";
+
+                        if (data.citation_info && data.citation_info.doi) {
+                            const doi = data.citation_info.doi;
+
+                            // Fetch paper details from Semantic Scholar
+                            fetch(`https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeURIComponent(doi)}?fields=title,abstract,tldr,citationCount,year,authors,journal`)
+                                .then(semanticsResponse => semanticsResponse.json())
+                                .then(semanticsData => {
+                                    detailsHTML += "<ul>";
+
+                                    // Display DOI and URL
+                                    detailsHTML += `<li><strong>DOI:</strong> ${doi}</li>`;
+                                    detailsHTML += `<li><strong>URL:</strong> <a href="https://doi.org/${doi}" target="_blank">https://doi.org/${doi}</a></li>`;
+
+                                    // Add Litmaps button
+                                    detailsHTML += `<li><a href="https://app.litmaps.com/search?q=${encodeURIComponent(doi)}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">View on Litmaps</a></li>`;
+
+
+                                    if (semanticsData.title) {
+                                        detailsHTML += `<li><strong>Title:</strong> ${semanticsData.title}</li>`;
+                                    }
+
+                                    // Add Semantic Scholar TLDR Summary
+                                    if (semanticsData.tldr && semanticsData.tldr.text) {
+                                        detailsHTML += `<li><strong>TLDR:</strong><i> ${semanticsData.tldr.text}</i></li>`;
+                                    } else {
+                                        detailsHTML += `<li><strong>TLDR:</strong> No summary available.</li>`;
+                                    }
+
+                                    // Add other details from Semantic Scholar
+
+                                    if (semanticsData.abstract) {
+                                        detailsHTML += `<li><strong>Abstract:</strong> ${semanticsData.abstract}</li>`;
+                                    }
+                                    if (semanticsData.citationCount) {
+                                        detailsHTML += `<li><strong>Citations:</strong> ${semanticsData.citationCount}</li>`;
+                                    }
+                                    if (semanticsData.year) {
+                                        detailsHTML += `<li><strong>Year:</strong> ${semanticsData.year}</li>`;
+                                    }
+                                    if (semanticsData.authors && semanticsData.authors.length > 0) {
+                                        const authors = semanticsData.authors.map(author => author.name).join(", ");
+                                        detailsHTML += `<li><strong>Author(s):</strong> ${authors}</li>`;
+                                    }
+                                    if (semanticsData.journal) {
+                                        detailsHTML += `<li><strong>Journal:</strong> ${semanticsData.journal.name || "N/A"}</li>`;
+                                    }
+                                    detailsHTML += "</ul>";
+
+                                    // Remove existing popovers before creating a new one
+                                    let existingPopover = bootstrap.Popover.getInstance(link);
+                                    if (existingPopover) {
+                                        existingPopover.dispose();
+                                    }
+
+                                    // Set popover content dynamically
+                                    link.setAttribute('data-bs-content', detailsHTML);
+                                    let popover = new bootstrap.Popover(link, {
+                                        html: true,
+                                        trigger: 'click', // Ensure it only opens on click
+                                        placement: 'auto',
+                                        customClass: 'wide-popover' // Apply custom width
+                                    });
+                                    popover.show();
+                                })
+                                .catch(semanticsError => {
+                                    console.error('Error fetching Semantic Scholar data:', semanticsError);
+                                    detailsHTML += `<p>Error: Failed to load Semantic Scholar data.</p>`;
+                                });
+                        } else {
+                            detailsHTML = `<p>Error: ${data.error || 'Citation details not found'}</p>`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching citation info:', error);
+                    });
+            });
+        });
+
+    });
+
     // Close popover when pressing the ESC key
-    document.addEventListener('keydown', function(event) {
+    document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
             document.querySelectorAll('.citation-link').forEach(link => {
                 let popoverInstance = bootstrap.Popover.getInstance(link);
@@ -172,6 +172,6 @@
 
 
 
-    </script>
+</script>
 
-    {% endblock %}
+{% endblock %}
