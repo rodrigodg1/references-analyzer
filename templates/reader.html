@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="bg-white shadow rounded-lg p-6">
+    <h2 class="text-2xl font-bold mb-4">Upload Files for Analysis</h2>
+    <form action="{{ url_for('analyze_reader') }}" method="post" enctype="multipart/form-data" class="space-y-4">
+        <div>
+            <label>BibTeX File</label>
+            <input type="file" name="bib_file" accept=".bib" required
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+        </div>
+
+        <div>
+            <label>LaTeX File</label>
+            <input type="file" name="tex_file" accept=".tex" required
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+        </div>
+
+        <button type="submit" 
+                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+            Analyze Files
+        </button>
+    </form>
+</div>
+    
+    {% if error_message %}
+        <p class="error">{{ error_message }}</p>
+    {% endif %}
+
+
+<div class="bg-white shadow rounded-lg p-6">
+
+    <div class="tex-content-display">
+        {% if tex_content_html %}
+            {{ tex_content_html | safe }}
+        {% else %}
+            <p>Upload a .tex and .bib file to view content and verify citations.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+
+
+    <!-- Re-introduce Tooltip -->
+    <div id="citation-tooltip" class="tooltip" style="display: none; position: absolute; z-index: 10;">
+        <div id="citation-tooltip-content"></div>
+    </div>
+
+
+    <footer>
+        <p>© 2024 My LaTeX Citation Verifier</p>
+    </footer>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const citationLinks = document.querySelectorAll('.citation-link');
+            const citationTooltip = document.getElementById('citation-tooltip');
+            const citationTooltipContent = document.getElementById('citation-tooltip-content');
+
+            citationLinks.forEach(link => {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault(); // Prevent default link navigation
+
+                    const citationKey = this.dataset.citationKey;
+                    const encodedCitationKey = encodeURIComponent(citationKey);
+                    const citationDetailURL = `/get_citation_detail/${encodedCitationKey}`; // Construct URL for Flask route
+
+                    fetch(citationDetailURL) // Fetch citation details from Flask server
+                        .then(response => response.json())
+                        .then(data => {
+
+                            
+                            if (data.citation_info) {
+                                let detailsHTML = "<ul>"; // Start unordered list
+
+                                if (data.citation_info.doi) {
+                                    detailsHTML += `<li><strong>DOI:</strong> ${data.citation_info.doi}</li>`;
+                                    detailsHTML += `<li><strong>URL:</strong> <a href="https://doi.org/${data.citation_info.doi}" target="_blank">https://doi.org/${data.citation_info.doi}</a></li>`;
+                                }
+                                if (data.citation_info.title) {
+                                    detailsHTML += `<li><strong>Title:</strong> ${data.citation_info.title}</li>`;
+                                }
+
+
+
+
+                                if (data.citation_info.abstract_summary) {
+                                    detailsHTML += `<li><strong>Summary:</strong> ${data.citation_info.abstract_summary}</li>`;
+                                }
+
+                                if (data.citation_info.citation_count) {
+                                    detailsHTML += `<li><strong>Citations:</strong> ${data.citation_info.citation_count}</li>`;
+                                }
+
+                                if (data.citation_info.year) {
+                                    detailsHTML += `<li><strong>Year:</strong> ${data.citation_info.year}</li>`;
+                                }
+
+
+                                if (data.citation_info.author) {
+                                    detailsHTML += `<li><strong>Author(s):</strong> ${data.citation_info.author}</li>`;
+                                }
+
+                                if (data.citation_info.journal) {
+                                    detailsHTML += `<li><strong>Journal:</strong> ${data.citation_info.journal}</li>`;
+                                }
+
+
+                                detailsHTML += "</ul>"; // Close unordered list
+
+                                citationTooltipContent.innerHTML = detailsHTML;
+                                citationTooltip.style.display = 'block'; // Show tooltip
+
+                                // Position tooltip near the citation link (adjust as needed)
+                                const linkRect = this.getBoundingClientRect();
+                                citationTooltip.style.left = (linkRect.left + window.scrollX) + 'px';
+                                citationTooltip.style.top = (linkRect.bottom + window.scrollY + 5) + 'px';
+
+
+                            } else if (data.error) {
+                                citationTooltipContent.textContent = `Error: ${data.error}`;
+                                citationTooltip.style.display = 'block';
+                                // Position tooltip (error case)
+                                const linkRect = this.getBoundingClientRect();
+                                citationTooltip.style.left = (linkRect.left + window.scrollX) + 'px';
+                                citationTooltip.style.top = (linkRect.bottom + window.scrollY + 5) + 'px';
+                            } else {
+                                citationTooltipContent.textContent = `Citation details not found for key: ${citationKey}`;
+                                citationTooltip.style.display = 'block';
+                                 // Position tooltip (not found case)
+                                const linkRect = this.getBoundingClientRect();
+                                citationTooltip.style.left = (linkRect.left + window.scrollX) + 'px';
+                                citationTooltip.style.top = (linkRect.bottom + window.scrollY + 5) + 'px';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching citation info:', error);
+                            citationTooltipContent.textContent = 'Error fetching citation information.';
+                            citationTooltip.style.display = 'block';
+                             // Position tooltip (fetch error case)
+                            const linkRect = this.getBoundingClientRect();
+                            citationTooltip.style.left = (linkRect.left + window.scrollX) + 'px';
+                            citationTooltip.style.top = (linkRect.bottom + window.scrollY + 5) + 'px';
+                        });
+                });
+            });
+
+            // Hide tooltip when clicking outside citation links
+            document.addEventListener('click', function(event) {
+                if (!event.target.classList.contains('citation-link')) {
+                    citationTooltip.style.display = 'none';
+                }
+            });
+        });
+    </script>
+
+
+
+    {% endblock %}

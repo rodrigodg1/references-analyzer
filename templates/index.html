@@ -7,13 +7,13 @@
     
     <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data" class="space-y-4">
         <div>
-            <label class="block text-sm font-medium text-gray-700">BibTeX File</label>
+            <label>BibTeX File</label>
             <input type="file" name="bib_file" accept=".bib" required
                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700">LaTeX File (Optional)</label>
+            <label>LaTeX File (Optional)</label>
             <input type="file" name="tex_file" accept=".tex"
                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
         </div>

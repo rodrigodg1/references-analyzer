@@ -1,0 +1,201 @@
+.text-red {
+  color: red;
+}
+
+.text-green {
+  color: green;
+}
+
+
+
+
+
+
+
+
+body {
+  font-family: 'Roboto', sans-serif;
+  margin: 20px;
+  background-color: #f4f4f4;
+  color: #333;
+}
+
+h1 {
+  text-align: center;
+  color: #2c3e50;
+}
+
+form {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+input[type="file"], button[type="submit"] {
+  margin: 10px;
+  padding: 10px 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+button[type="submit"] {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  background-color: #2980b9;
+}
+
+.error {
+  color: red;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.tex-content-display {
+  max-width: 90%;
+  margin: auto;
+  background-color: white;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-family: monaco, 'Fira Code', monospace;
+  white-space: pre-wrap; /* Preserve formatting */
+  word-wrap: break-word;
+  color: black;
+}
+
+.citation-link {
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.citation-link:hover {
+  color: rgb(13, 90, 6);
+}
+
+.citation-key-not-found {
+  color: red;
+  font-weight: bold;
+}
+
+
+.citation-info-area {
+  background-color: #ffffff; /* White background for citation info area */
+  padding: 25px; /* Increased padding */
+  border: 1px solid #e0e0e0; /* Lighter border */
+  border-radius: 12px; /* More rounded corners */
+  margin-top: 30px; /* Increased top margin */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Softer shadow */
+}
+
+.citation-info-area h2 {
+  margin-top: 0;
+  color: #34495e; /* Darker heading color */
+  font-size: 1.8em; /* Larger heading */
+  margin-bottom: 20px; /* Space below heading */
+  border-bottom: 2px solid #ecf0f1; /* Subtle underline for heading */
+  padding-bottom: 10px;
+}
+
+#citation-details {
+  font-family: 'Roboto', sans-serif; /* Use body font */
+  line-height: 1.8; /* Increased line height for readability */
+  font-size: 15px; /* Slightly larger font size */
+}
+
+#citation-details p {
+  margin-bottom: 12px; /* More space between paragraphs */
+}
+
+#citation-details strong {
+  font-weight: 600; /* Slightly bolder field labels */
+  color: #555; /* Slightly darker label color */
+}
+
+
+/* ... existing CSS ... */
+
+.tooltip {
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ccc;
+  padding: 15px;
+  border-radius: 8px;
+  z-index: 10;
+  pointer-events: auto; /* Allows text selection and interactions inside the tooltip */
+  /* pointer-events: none; /* Disables all mouse interactions */
+  /* pointer-events: visiblePainted; /* Allows interactions with visible painted elements */
+  /* pointer-events: visibleFill; /* Allows interactions with visible fill elements */
+  /* pointer-events: visibleStroke; /* Allows interactions with visible stroke elements */
+  /* pointer-events: visible; /* Allows interactions with visible elements */
+  /* pointer-events: painted; /* Allows interactions with painted elements */
+  /* pointer-events: fill; /* Allows interactions with fill elements */
+  /* pointer-events: stroke; /* Allows interactions with stroke elements */
+  /* pointer-events: all; /* Allows all mouse interactions */
+  white-space: pre-line;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  font-size: 14px;
+  line-height: 1.4;
+  max-width: 500px; /* Optional: limit tooltip width */
+}
+
+.tooltip ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.tooltip li {
+  margin-bottom: 8px;
+}
+
+.tooltip strong {
+  font-weight: bold;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+}
+
+.container {
+  max-width: 800px;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  border: none;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  border: none;
+  transition: background 0.3s;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+#output-container {
+  border: 1px solid #ddd;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.citation-link {
+  color: #007bff;
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.citation-link:hover {
+  text-decoration: underline;
+}
+
