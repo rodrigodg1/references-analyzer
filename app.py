@@ -889,11 +889,19 @@ def _fetch_abstract_summary(doi):
 
 
 
-
-
 def remove_tex_comments(tex_str):
-    """Removes all LaTeX comments from the .tex file content."""
-    return re.sub(r'%.*', '', tex_str)
+    """Removes all LaTeX comments and limits excess whitespace to a maximum of two newlines."""
+    # Remove comments (anything after % that is not escaped)
+    tex_str = re.sub(r'(?<!\\)%.*', '', tex_str)
+    
+    # Remove leading/trailing spaces on each line
+    tex_str = "\n".join(line.strip() for line in tex_str.splitlines())
+    
+    # Replace multiple consecutive newlines with a maximum of two
+    tex_str = re.sub(r'\n{3,}', '\n\n', tex_str)
+
+    return tex_str
+
 
 
 
