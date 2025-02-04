@@ -128,7 +128,7 @@ button[type="submit"]:hover {
   padding: 15px;
   border-radius: 8px;
   z-index: 10;
-  pointer-events: auto; /* Allows text selection and interactions inside the tooltip */
+  pointer-events: visibleFill; /* Allows text selection and interactions inside the tooltip */
   /* pointer-events: none; /* Disables all mouse interactions */
   /* pointer-events: visiblePainted; /* Allows interactions with visible painted elements */
   /* pointer-events: visibleFill; /* Allows interactions with visible fill elements */
@@ -198,4 +198,37 @@ body {
 .citation-link:hover {
   text-decoration: underline;
 }
+
+
+
+
+
+
+.popover {
+  max-width: 600px !important; /* Increase the width */
+  width: 600px !important;
+  white-space: normal; /* Ensure content wraps properly */
+}
+
+.popover-body {
+  max-width: 600px !important;
+  width: 600px !important;
+  white-space: normal; /* Ensure text wraps */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.popover-header {
+  font-weight: bold;
+  text-align: center;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+}
+
+.tooltip-inner {
+  max-width: 400px !important;
+  width: 400px !important;
+  white-space: normal; /* Ensure text wraps inside the tooltip */
+}
+
 

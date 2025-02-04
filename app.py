@@ -895,9 +895,9 @@ def _fetch_citation_details(citation_key, bib_database):
                 #abstract_summary = "N/A"
                 
                 # Fetch citation count only if verification is enabled and DOI is available
-                if  doi != 'N/A':
-                    citation_count = _fetch_citation_count(doi)
-                    abstract_summary = _fetch_abstract_summary(doi)
+                #if  doi != 'N/A':
+                    #citation_count = _fetch_citation_count(doi)
+                    #abstract_summary = _fetch_abstract_summary(doi)
                     #abstract_summary_llm = _summarize_text_llm(abstract_summary)
                     
                 
@@ -907,8 +907,8 @@ def _fetch_citation_details(citation_key, bib_database):
                     "year": year,
                     "author": author,
                     "journal": journal,
-                    "citation_count": citation_count,
-                    "abstract_summary": abstract_summary,
+                    #"citation_count": citation_count,
+                    #"abstract_summary": abstract_summary,
                    # "abstract_summary_llm": abstract_summary_llm
                 }
                 print(f"Returning details: {details}") # Debug print
@@ -918,32 +918,32 @@ def _fetch_citation_details(citation_key, bib_database):
         print("bib_database is None or has no entries.") # Debug print
     return None
 
-def _fetch_citation_count(doi):
-    """Fetches citation count from external API using DOI."""
-    try:
-        url = f"https://api.crossref.org/works/{doi}"
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            return data.get('message', {}).get('is-referenced-by-count', 'N/A')
-    except requests.RequestException as e:
-        print(f"Error fetching citation count: {e}")
-    return "N/A"
+# def _fetch_citation_count(doi):
+#     """Fetches citation count from external API using DOI."""
+#     try:
+#         url = f"https://api.crossref.org/works/{doi}"
+#         response = requests.get(url, timeout=5)
+#         if response.status_code == 200:
+#             data = response.json()
+#             return data.get('message', {}).get('is-referenced-by-count', 'N/A')
+#     except requests.RequestException as e:
+#         print(f"Error fetching citation count: {e}")
+#     return "N/A"
 
-def _fetch_abstract_summary(doi):
-    """Fetches the research abstract and summarizes it using LLM API."""
-    try:
-        url = f"https://api.semanticscholar.org/v1/paper/{doi}"
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            abstract = data.get('abstract', 'N/A')
-            if abstract != 'N/A':
-                #return _summarize_text(abstract)
-                return abstract
-    except requests.RequestException as e:
-        print(f"Error fetching abstract: {e}")
-    return "N/A"
+# def _fetch_abstract_summary(doi):
+#     """Fetches the research abstract and summarizes it using LLM API."""
+#     try:
+#         url = f"https://api.semanticscholar.org/v1/paper/{doi}"
+#         response = requests.get(url, timeout=5)
+#         if response.status_code == 200:
+#             data = response.json()
+#             abstract = data.get('abstract', 'N/A')
+#             if abstract != 'N/A':
+#                 #return _summarize_text(abstract)
+#                 return abstract
+#     except requests.RequestException as e:
+#         print(f"Error fetching abstract: {e}")
+#     return "N/A"
 
 
 

@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-
 {% block content %}
-
 <div class="bg-white shadow rounded-lg p-6">
     <h2 class="text-2xl font-bold mb-4">Upload Files for Analysis</h2>
     <p>Tool to assist reading in latex and verify citations</p>
@@ -11,13 +9,11 @@
             <input type="file" name="bib_file" accept=".bib" required
                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
         </div>
-
         <div>
             <label>LaTeX File</label>
             <input type="file" name="tex_file" accept=".tex" required
                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
         </div>
-
         <button type="submit" 
                 class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
             Analyze Files
@@ -29,9 +25,7 @@
         <p class="error">{{ error_message }}</p>
     {% endif %}
 
-
 <div class="bg-white shadow rounded-lg p-6">
-
     <div class="tex-content-display">
         {% if tex_content_html %}
             {{ tex_content_html | safe }}
@@ -39,125 +33,145 @@
             <p>Upload a .tex and .bib file to view content and verify citations.</p>
         {% endif %}
     </div>
-
 </div>
-
-
 
     <!-- Re-introduce Tooltip -->
     <div id="citation-tooltip" class="tooltip" style="display: none; position: absolute; z-index: 10;">
         <div id="citation-tooltip-content"></div>
     </div>
 
-
     <footer>
         <p>© 2024 My LaTeX Citation Verifier</p>
     </footer>
 
-
     <script>
+        
         document.addEventListener('DOMContentLoaded', function() {
-            const citationLinks = document.querySelectorAll('.citation-link');
-            const citationTooltip = document.getElementById('citation-tooltip');
-            const citationTooltipContent = document.getElementById('citation-tooltip-content');
-
-            citationLinks.forEach(link => {
+            // Initialize Bootstrap tooltips and popovers
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        
+            var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+            popoverTriggerList.map(function(popoverTriggerEl) {
+                return new bootstrap.Popover(popoverTriggerEl, {
+                    html: true, // Allows HTML content inside popover
+                    trigger: 'click',
+                    placement: 'auto',
+                    customClass: 'wide-popover' // Custom class for width adjustment
+                });
+            });
+        
+            // Event listener for citation links
+            document.querySelectorAll('.citation-link').forEach(link => {
                 link.addEventListener('click', function(event) {
-                    event.preventDefault(); // Prevent default link navigation
-
+                    event.preventDefault();
+        
                     const citationKey = this.dataset.citationKey;
                     const encodedCitationKey = encodeURIComponent(citationKey);
-                    const citationDetailURL = `/get_citation_detail/${encodedCitationKey}`; // Construct URL for Flask route
-
-                    fetch(citationDetailURL) // Fetch citation details from Flask server
+                    const citationDetailURL = `/get_citation_detail/${encodedCitationKey}`;
+        
+                    fetch(citationDetailURL)
                         .then(response => response.json())
                         .then(data => {
+                            let detailsHTML = "";
+        
+                            if (data.citation_info && data.citation_info.doi) {
+                                const doi = data.citation_info.doi;
 
-                            
-                            if (data.citation_info) {
-                                let detailsHTML = "<ul>"; // Start unordered list
+                                // Fetch paper details from Semantic Scholar
+                                fetch(`https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeURIComponent(doi)}?fields=title,abstract,tldr,citationCount,year,authors,journal`)
+                                    .then(semanticsResponse => semanticsResponse.json())
+                                    .then(semanticsData => {
+                                        detailsHTML += "<ul>";
 
-                                if (data.citation_info.doi) {
-                                    detailsHTML += `<li><strong>DOI:</strong> ${data.citation_info.doi}</li>`;
-                                    detailsHTML += `<li><strong>URL:</strong> <a href="https://doi.org/${data.citation_info.doi}" target="_blank">https://doi.org/${data.citation_info.doi}</a></li>`;
-                                }
-                                if (data.citation_info.title) {
-                                    detailsHTML += `<li><strong>Title:</strong> ${data.citation_info.title}</li>`;
-                                }
+                                        // Display DOI and URL
+                                        detailsHTML += `<li><strong>DOI:</strong> ${doi}</li>`;
+                                        detailsHTML += `<li><strong>URL:</strong> <a href="https://doi.org/${doi}" target="_blank">https://doi.org/${doi}</a></li>`;
+                                        
+                                        // Add Litmaps button
+                                        detailsHTML += `<li><a href="https://app.litmaps.com/search?q=${encodeURIComponent(doi)}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 5px 10px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">View on Litmaps</a></li>`;
+                                        
 
+                                        if (semanticsData.title) {
+                                            detailsHTML += `<li><strong>Title:</strong> ${semanticsData.title}</li>`;
+                                        }        
 
+                                        // Add Semantic Scholar TLDR Summary
+                                        if (semanticsData.tldr && semanticsData.tldr.text) {
+                                            detailsHTML += `<li><strong>TLDR:</strong><i> ${semanticsData.tldr.text}</i></li>`;
+                                        } else {
+                                            detailsHTML += `<li><strong>TLDR:</strong> No summary available.</li>`;
+                                        }
 
+                                        // Add other details from Semantic Scholar
 
-                                if (data.citation_info.abstract_summary) {
-                                    detailsHTML += `<li><strong>Summary:</strong> ${data.citation_info.abstract_summary}</li>`;
-                                }
+                                        if (semanticsData.abstract) {
+                                            detailsHTML += `<li><strong>Abstract:</strong> ${semanticsData.abstract}</li>`;
+                                        }
+                                        if (semanticsData.citationCount) {
+                                            detailsHTML += `<li><strong>Citations:</strong> ${semanticsData.citationCount}</li>`;
+                                        }
+                                        if (semanticsData.year) {
+                                            detailsHTML += `<li><strong>Year:</strong> ${semanticsData.year}</li>`;
+                                        }
+                                        if (semanticsData.authors && semanticsData.authors.length > 0) {
+                                            const authors = semanticsData.authors.map(author => author.name).join(", ");
+                                            detailsHTML += `<li><strong>Author(s):</strong> ${authors}</li>`;
+                                        }
+                                        if (semanticsData.journal) {
+                                            detailsHTML += `<li><strong>Journal:</strong> ${semanticsData.journal.name || "N/A"}</li>`;
+                                        }
+                                        detailsHTML += "</ul>";
 
-                                if (data.citation_info.citation_count) {
-                                    detailsHTML += `<li><strong>Citations:</strong> ${data.citation_info.citation_count}</li>`;
-                                }
+                                        // Remove existing popovers before creating a new one
+                                        let existingPopover = bootstrap.Popover.getInstance(link);
+                                        if (existingPopover) {
+                                            existingPopover.dispose();
+                                        }
 
-                                if (data.citation_info.year) {
-                                    detailsHTML += `<li><strong>Year:</strong> ${data.citation_info.year}</li>`;
-                                }
-
-
-                                if (data.citation_info.author) {
-                                    detailsHTML += `<li><strong>Author(s):</strong> ${data.citation_info.author}</li>`;
-                                }
-
-                                if (data.citation_info.journal) {
-                                    detailsHTML += `<li><strong>Journal:</strong> ${data.citation_info.journal}</li>`;
-                                }
-
-
-                                detailsHTML += "</ul>"; // Close unordered list
-
-                                citationTooltipContent.innerHTML = detailsHTML;
-                                citationTooltip.style.display = 'block'; // Show tooltip
-
-                                // Position tooltip near the citation link (adjust as needed)
-                                const linkRect = this.getBoundingClientRect();
-                                citationTooltip.style.left = (linkRect.left + window.scrollX) + 'px';
-                                citationTooltip.style.top = (linkRect.bottom + window.scrollY + 5) + 'px';
-
-
-                            } else if (data.error) {
-                                citationTooltipContent.textContent = `Error: ${data.error}`;
-                                citationTooltip.style.display = 'block';
-                                // Position tooltip (error case)
-                                const linkRect = this.getBoundingClientRect();
-                                citationTooltip.style.left = (linkRect.left + window.scrollX) + 'px';
-                                citationTooltip.style.top = (linkRect.bottom + window.scrollY + 5) + 'px';
+                                        // Set popover content dynamically
+                                        link.setAttribute('data-bs-content', detailsHTML);
+                                        let popover = new bootstrap.Popover(link, {
+                                            html: true,
+                                            trigger: 'click', // Ensure it only opens on click
+                                            placement: 'auto',
+                                            customClass: 'wide-popover' // Apply custom width
+                                        });
+                                        popover.show();
+                                    })
+                                    .catch(semanticsError => {
+                                        console.error('Error fetching Semantic Scholar data:', semanticsError);
+                                        detailsHTML += `<p>Error: Failed to load Semantic Scholar data.</p>`;
+                                    });
                             } else {
-                                citationTooltipContent.textContent = `Citation details not found for key: ${citationKey}`;
-                                citationTooltip.style.display = 'block';
-                                 // Position tooltip (not found case)
-                                const linkRect = this.getBoundingClientRect();
-                                citationTooltip.style.left = (linkRect.left + window.scrollX) + 'px';
-                                citationTooltip.style.top = (linkRect.bottom + window.scrollY + 5) + 'px';
+                                detailsHTML = `<p>Error: ${data.error || 'Citation details not found'}</p>`;
                             }
                         })
                         .catch(error => {
                             console.error('Error fetching citation info:', error);
-                            citationTooltipContent.textContent = 'Error fetching citation information.';
-                            citationTooltip.style.display = 'block';
-                             // Position tooltip (fetch error case)
-                            const linkRect = this.getBoundingClientRect();
-                            citationTooltip.style.left = (linkRect.left + window.scrollX) + 'px';
-                            citationTooltip.style.top = (linkRect.bottom + window.scrollY + 5) + 'px';
                         });
                 });
             });
+        
+        });
 
-            // Hide tooltip when clicking outside citation links
-            document.addEventListener('click', function(event) {
-                if (!event.target.classList.contains('citation-link')) {
-                    citationTooltip.style.display = 'none';
+    // Close popover when pressing the ESC key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.citation-link').forEach(link => {
+                let popoverInstance = bootstrap.Popover.getInstance(link);
+                if (popoverInstance) {
+                    popoverInstance.hide();
                 }
             });
-        });
+        }
+    });
+
+
+
+
     </script>
-
-
 
     {% endblock %}
