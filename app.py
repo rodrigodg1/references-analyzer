@@ -377,22 +377,39 @@ class BibliometricAnalyzer:
     def get_label_reference_stats_data(self):
         return self.label_reference_stats if self.label_reference_stats else {}
 
+
+
+
     def validate_citations(self):
+        # Return None if no citations are found in the LaTeX file
         if not self.citations:
             return None
 
-        bib_keys = {entry['ID'] for entry in self.entries}
-        tex_citations = set(self.citations.keys())
+        # Normalize BibTeX entry keys to lowercase for case-insensitive comparison
+        bib_keys = {entry['ID'].lower() for entry in self.entries}
 
+        # Normalize LaTeX citation keys to lowercase for case-insensitive comparison
+        tex_citations = {cite.lower() for cite in self.citations.keys()}
+
+        # Perform set operations to identify missing, unused, and valid citations
+        missing_citations = {
+            cite: self.citation_locations[cite]
+            for cite in tex_citations - bib_keys
+        }
+
+        unused_citations = list(bib_keys - tex_citations)
+
+        valid_citations = len(tex_citations & bib_keys)
+        total_citations = len(tex_citations)
+        total_references = len(bib_keys)
+
+        # Return the validation results
         return {
-            'missing_citations': {
-                cite: self.citation_locations[cite]
-                for cite in tex_citations - bib_keys
-            },
-            'unused_citations': list(bib_keys - tex_citations),
-            'valid_citations': len(tex_citations & bib_keys),
-            'total_citations': len(tex_citations),
-            'total_references': len(bib_keys)
+            'missing_citations': missing_citations,
+            'unused_citations': unused_citations,
+            'valid_citations': valid_citations,
+            'total_citations': total_citations,
+            'total_references': total_references
         }
 
     def get_venue_statistics(self):
@@ -597,6 +614,24 @@ class BibliometricAnalyzer:
 
 
 
+def strip_latex_comments(tex_content):
+    """
+    Removes LaTeX comments from the given content.
+    - Single-line comments start with `%` and continue to the end of the line.
+    - Multi-line comments are enclosed in `\iffalse ... \fi`.
+    """
+    # Remove single-line comments
+    tex_content = re.sub(r'^\s*%.*$', '', tex_content, flags=re.MULTILINE)
+    # Remove multi-line comments (optional, if supported)
+    tex_content = re.sub(r'\\iffalse.*?\\fi', '', tex_content, flags=re.DOTALL)
+    return tex_content
+
+
+
+
+
+
+
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -607,31 +642,47 @@ def index():
     return render_template('index.html')
 
 @app.route('/analyze', methods=['POST'])
+
+
+
+
 def analyze():
+    # Check if BibTeX file is uploaded
     if 'bib_file' not in request.files:
         return 'No BibTeX file uploaded', 400
-
     bib_file = request.files['bib_file']
+    
+    # Validate BibTeX file
     if bib_file.filename == '':
         return 'No BibTeX file selected', 400
-
     if not allowed_file(bib_file.filename):
         return 'Invalid file type for BibTeX file', 400
-
+    
     bib_content = None
     tex_content = None
-
+    
     try:
+        # Read and decode BibTeX content
         bib_content = bib_file.read().decode('utf-8')
-
+        
+        # Check if LaTeX file is uploaded
         if 'tex_file' in request.files and request.files['tex_file'].filename:
             tex_file = request.files['tex_file']
+            
+            # Validate LaTeX file
             if not allowed_file(tex_file.filename):
                 return 'Invalid file type for LaTeX file', 400
+            
+            # Read and decode LaTeX content
             tex_content = tex_file.read().decode('utf-8')
-
+            
+            # Strip LaTeX comments from the content
+            tex_content = strip_latex_comments(tex_content)
+        
+        # Initialize analyzer with BibTeX and LaTeX content
         analyzer = BibliometricAnalyzer(bib_content, tex_content)
-
+        
+        # Perform various analyses
         results = {
             'basic_stats': analyzer.get_basic_stats(),
             'entry_types': analyzer.get_entry_types(),
@@ -655,19 +706,40 @@ def analyze():
             'top_authors_chart': analyzer.get_top_authors_chart_data(),
             'keyword_chart': analyzer.get_keyword_chart_data()
         }
-
+        
+        # Detect redundant definitions in LaTeX content
         redundant_definitions = []
         if tex_content:
             redundant_definitions = detect_redundant_abbreviations(tex_content)
-
-        return render_template('results.html', results=results, original_text=tex_content,
-                               redundant_definitions=redundant_definitions, all_ok=not redundant_definitions)
-
+        
+        # Render results template
+        return render_template(
+            'results.html',
+            results=results,
+            original_text=tex_content,
+            redundant_definitions=redundant_definitions,
+            all_ok=not redundant_definitions
+        )
+    
     except UnicodeDecodeError:
         return 'Invalid BibTeX or LaTeX file encoding (must be UTF-8)', 400
+    
     except Exception as e:
         app.logger.error(f"Analysis error: {str(e)}")
         return f'Error analyzing files: {str(e)}', 500
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @app.route('/doi2bib')
 def doi2bib():
