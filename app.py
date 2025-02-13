@@ -751,6 +751,77 @@ def reader():
     return render_template('reader.html')
 
 
+
+@app.route('/analysis2', methods=['GET', 'POST'])
+def analysis2():
+    return render_template('analysis2.html')
+
+
+
+
+
+
+
+@app.route('/analyze_text', methods=['POST'])
+def analyze_text():
+    # Obtenha o conteúdo dos campos de texto
+    bib_content = request.form.get('bib_content', '').strip()
+    tex_content = request.form.get('tex_content', '').strip()
+
+    # Verifique se ambos os campos foram preenchidos
+    if not bib_content or not tex_content:
+        return 'Both BibTeX and LaTeX content are required.', 400
+
+    try:
+        # Inicialize o analisador com o conteúdo fornecido
+        analyzer = BibliometricAnalyzer(bib_content, tex_content)
+
+        # Realize as análises
+        results = {
+            'basic_stats': analyzer.get_basic_stats(),
+            'entry_types': analyzer.get_entry_types(),
+            'venues': analyzer.get_venue_statistics(),
+            'author_stats': analyzer.get_author_statistics()[0],
+            'page_stats': analyzer.get_page_statistics(),
+            'citation_stats': analyzer.validate_citations(),
+            'yearly_stats': analyzer.get_yearly_publication_stats(),
+            'keyword_stats': analyzer.get_keyword_statistics(),
+            'yearly_venue_stats': analyzer.get_yearly_venue_stats(),
+            'page_stats_by_type': analyzer.get_page_stats_by_type(),
+            'label_reference_stats': analyzer.get_label_reference_stats_data(),
+            'collaboration_network': analyzer.get_collaboration_network(),
+            'temporal_analysis': analyzer.get_temporal_analysis(),
+            'content_analysis': analyzer.get_content_analysis(),
+            'institutional_analysis': analyzer.get_institutional_analysis(),
+            'citation_analysis': analyzer.get_citation_analysis(),
+            'yearly_publication_chart': analyzer.get_yearly_publication_chart_data(),
+            'entry_type_chart': analyzer.get_entry_type_chart_data(),
+            'top_venues_chart': analyzer.get_top_venues_chart_data(),
+            'top_authors_chart': analyzer.get_top_authors_chart_data(),
+            'keyword_chart': analyzer.get_keyword_chart_data()
+        }
+
+        # Detecte definições redundantes no conteúdo LaTeX
+        redundant_definitions = detect_redundant_abbreviations(tex_content)
+
+        # Renderize o template de resultados
+        return render_template(
+            'results.html',
+            results=results,
+            original_text=tex_content,
+            redundant_definitions=redundant_definitions,
+            all_ok=not redundant_definitions
+        )
+    except UnicodeDecodeError:
+        return 'Invalid BibTeX or LaTeX content encoding (must be UTF-8)', 400
+    except Exception as e:
+        app.logger.error(f"Analysis error: {str(e)}")
+        return f'Error analyzing text: {str(e)}', 500
+
+
+
+
+
 @app.route('/analyze_reader', methods=['POST'])
 def analyze_reader():
     global bib_database
@@ -780,6 +851,52 @@ def analyze_reader():
                            tex_content_html=tex_content_html,
                            citation_details=citation_details,
                            error_message=error_message)
+
+
+
+
+@app.route('/analyze_reader_textarea', methods=['GET', 'POST'])
+def analyze_reader_textarea():
+    global bib_database
+    tex_content_html = ""
+    citation_details = {}
+    error_message = None
+
+    if request.method == 'POST':
+        # Get BibTeX and LaTeX content from textarea fields
+        bib_content = request.form.get('bib_content', '').strip()
+        tex_content = request.form.get('tex_content', '').strip()
+
+        # Validate that both fields are provided
+        if not bib_content or not tex_content:
+            error_message = "Please provide both BibTeX and LaTeX content."
+        else:
+            try:
+                # Parse the BibTeX content
+                bib_database = bibtexparser.loads(bib_content)
+
+                # Process the LaTeX content
+                tex_content_html = process_tex_content(tex_content, bib_database)
+            except Exception as e:
+                error_message = f"Error processing content: {e}"
+                bib_database = None  # Reset bib_database on error
+
+    return render_template('reader2.html',
+                           tex_content_html=tex_content_html,
+                           citation_details=citation_details,
+                           error_message=error_message)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @app.route('/convert-dois', methods=['POST'])

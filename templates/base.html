@@ -20,20 +20,49 @@
 <nav class="bg-white shadow-lg">
     <div class="max-w-7xl mx-auto px-4">
         <div class="flex justify-between h-16">
+            <!-- Logo/Title -->
             <div class="flex items-center space-x-8">
                 <h1 class="text-xl font-bold">Bibtex and Latex Tools</h1>
-                <div class="hidden md:flex space-x-4">
-                    <a href="{{ url_for('index') }}" class="text-gray-700 hover:text-blue-600 px-3 py-2">Analysis</a>
-                    <a href="{{ url_for('doi2bib') }}" class="text-gray-700 hover:text-green-600 px-3 py-2">DOI Converter</a>
-                    <a href="{{ url_for('reader') }}" class="text-gray-700 hover:text-red-600 px-3 py-2">Reader</a>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="hidden md:flex space-x-4 items-center">
+
+
+                                <!-- Dropdown for Textarea Options -->
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle text-gray-700 hover:text-red-600 px-3 py-2" type="button" id="textareaOptionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Textarea Options
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="textareaOptionsDropdown">
+                        <li><a class="dropdown-item" href="{{ url_for('analysis2') }}">Analysis (Textarea)</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('analyze_reader_textarea') }}">Reader (Textarea)</a></li>
+                    </ul>
                 </div>
+                
+
+                <!-- Dropdown for Textarea Options -->
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle text-gray-700 hover:text-red-600 px-3 py-2" type="button" id="textareaOptionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        File Options
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="textareaOptionsDropdown">
+                        <li><a class="dropdown-item" href="{{ url_for('index') }}">Analysis (File)</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('reader') }}">Reader (File)</a></li>
+                    </ul>
+                </div>
+
+                <a href="{{ url_for('doi2bib') }}" class="text-gray-700 hover:text-green-600 px-3 py-2">DOI Converter</a>
+
+
             </div>
         </div>
     </div>
 </nav>
 
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {% block content %}{% endblock %}
-    </main>
+<!-- Main Content -->
+<main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    {% block content %}{% endblock %}
+</main>
 </body>
 </html>
